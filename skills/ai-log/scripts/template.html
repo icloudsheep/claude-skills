@@ -119,21 +119,22 @@
   svg.rails { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 1; }
   .rail { stroke-width: 6; fill: none; opacity: .5; stroke-linecap: round; stroke-dasharray: var(--len); stroke-dashoffset: var(--len);
           animation: draw 2s cubic-bezier(.4,0,.2,1) forwards; }
-  .node { position: absolute; width: 34px; height: 34px; transform: translate(-50%, -50%); cursor: pointer; z-index: 2;
+  /* 时间线节点：作用域限定在 #stage 内，避免 .node 类名泄漏到 mermaid 图的同名节点 */
+  #stage .node { position: absolute; width: 34px; height: 34px; transform: translate(-50%, -50%); cursor: pointer; z-index: 2;
     animation: pop 1s cubic-bezier(.2,.9,.3,1.3) both; transition: left .9s cubic-bezier(.2,.8,.2,1); }
-  .node .knob { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; position: relative;
+  #stage .node .knob { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; position: relative;
     background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--c) 78%, #fff), color-mix(in srgb, var(--c) 35%, #2a344a));
     border: 2px solid color-mix(in srgb, var(--c) 80%, #fff); font-size: 14px; line-height: 1;
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 16%, transparent), 0 4px 14px -2px var(--c);
     transition: transform .44s, box-shadow .44s; }
-  .node .num { position: absolute; right: -5px; bottom: -5px; min-width: 16px; height: 16px; padding: 0 3px;
+  #stage .node .num { position: absolute; right: -5px; bottom: -5px; min-width: 16px; height: 16px; padding: 0 3px;
     border-radius: 9px; background: #28323e; border: 1.5px solid var(--c); color: #fff;
     font-size: 10px; font-weight: 700; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
   /* 跨午夜接续：节点左上角月亮角标 */
-  .node .moon { position: absolute; left: -7px; top: -7px; font-size: 12px; line-height: 1;
+  #stage .node .moon { position: absolute; left: -7px; top: -7px; font-size: 12px; line-height: 1;
     filter: drop-shadow(0 1px 3px rgba(40,40,90,.5)); }
-  .node:hover .knob { transform: scale(1.16); }
-  .node.active .knob { transform: scale(1.22); box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 30%, transparent), 0 0 20px var(--c); }
+  #stage .node:hover .knob { transform: scale(1.16); }
+  #stage .node.active .knob { transform: scale(1.22); box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 30%, transparent), 0 0 20px var(--c); }
 
   /* 连接线：静态虚线、低透明、最底层 */
   svg.link { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: -1; }
@@ -178,8 +179,15 @@
   /* markdown 排版 */
   .md > :first-child { margin-top: 0; } .md > :last-child { margin-bottom: 0; }
   .md { font-size: 14.5px; line-height: 1.7; color: #20283a; }
-  .md h1,.md h2,.md h3 { margin: 14px 0 8px; line-height: 1.3; font-weight: 680; }
+  .md h1,.md h2,.md h3,.md h4,.md h5,.md h6 { margin: 14px 0 8px; line-height: 1.3; font-weight: 680; }
   .md h1 { font-size: 18px; } .md h2 { font-size: 16px; } .md h3 { font-size: 14.5px; color: var(--dim); }
+  .md h4 { font-size: 13.5px; color: var(--dim); } .md h5 { font-size: 13px; color: var(--dim); }
+  .md h6 { font-size: 12.5px; color: var(--dim); font-weight: 650; }
+  /* mermaid 图：磨砂浅底容器，超宽时横向滚动（不压缩图，保自然尺寸） */
+  .md .mermaid { margin: 12px 0; padding: 12px; border-radius: 12px; overflow-x: auto;
+    background: rgba(255,255,255,.4); border: 1px solid var(--line); text-align: center; }
+  .md .mermaid svg { max-width: none; height: auto; }
+  .md .mermaid[data-failed] { text-align: left; color: #b4453a; font: 12.5px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
   .md p { margin: 8px 0; } .md ul,.md ol { margin: 8px 0; padding-left: 22px; } .md li { margin: 3px 0; }
   .md a { color: color-mix(in srgb, var(--c) 60%, #1c2438); text-decoration: none; border-bottom: 1px dashed currentColor; }
   .md code { background: rgba(40,50,90,.1); padding: 1.5px 6px; border-radius: 5px; font: 12.5px/1.5 ui-monospace, Menlo, monospace; }
@@ -219,6 +227,9 @@
      改别名只需重写 aliases.js，所有页面刷新即生效，无需重渲染 HTML。 -->
 <script src="./data.js"></script>
 <script src="../aliases.js"></script>
+<!-- mermaid 图表库：优先本地副本（root 根，离线可用），加载失败则回退 CDN。
+     onerror 动态换源；mermaid 就绪后由 renderMermaid() 渲染当前详情里的图。 -->
+<script src="../mermaid.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';s.onload=function(){window.__mermaidReady&&window.__mermaidReady()};document.head.appendChild(s);"></script>
 <script>
 // 数据真源：来自 data.js；缺失时退化为空，避免离线打开报错。
 const DATA = (typeof window.AILOG_DATA !== "undefined" && window.AILOG_DATA) || { date: "", entries: [] };
@@ -279,9 +290,16 @@ function renderMd(src) {
   const st = []; const closeList = () => { while (st.length) html += st.pop() === "ul" ? "</ul>" : "</ol>"; };
   while (i < lines.length) {
     const ln = lines[i];
-    if (/^```/.test(ln)) { closeList(); i++; let code = "";
-      while (i < lines.length && !/^```/.test(lines[i])) { code += esc(lines[i]) + "\n"; i++; }
-      i++; html += `<pre><code>${code}</code></pre>`; continue; }
+    if (/^```/.test(ln)) {
+      closeList();
+      const lang = ln.replace(/^```/, "").trim().toLowerCase();
+      i++; let code = "";
+      while (i < lines.length && !/^```/.test(lines[i])) { code += lines[i] + "\n"; i++; }
+      i++;
+      // mermaid 代码块 → 交给 mermaid 渲染（保留原始文本，不转义/不当代码）
+      if (lang === "mermaid") { html += `<div class="mermaid">${esc(code)}</div>`; continue; }
+      html += `<pre><code>${esc(code)}</code></pre>`; continue;
+    }
     if (/\|/.test(ln) && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i+1].replace(/[^|:\-\s]/g, ""))) {
       closeList(); const cells = (r) => r.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map((c) => c.trim());
       const head = cells(ln); i += 2;
@@ -289,7 +307,7 @@ function renderMd(src) {
       while (i < lines.length && /\|/.test(lines[i])) { html += "<tr>" + cells(lines[i]).map((c) => `<td>${mdInline(c)}</td>`).join("") + "</tr>"; i++; }
       html += "</tbody></table>"; continue; }
     let m;
-    if ((m = ln.match(/^(#{1,3})\s+(.*)/))) { closeList(); html += `<h${m[1].length}>${mdInline(m[2])}</h${m[1].length}>`; i++; continue; }
+    if ((m = ln.match(/^(#{1,6})\s+(.*)/))) { closeList(); const lv = Math.min(m[1].length, 6); html += `<h${lv}>${mdInline(m[2])}</h${lv}>`; i++; continue; }
     if (/^\s*>\s?/.test(ln)) { closeList(); html += `<blockquote>${mdInline(ln.replace(/^\s*>\s?/, ""))}</blockquote>`; i++; continue; }
     if (/^\s*([-*_])\1{1,}\s*$/.test(ln)) { closeList(); html += "<hr>"; i++; continue; }
     if ((m = ln.match(/^\s*\d+\.\s+(.*)/))) { if (st[st.length-1] !== "ol") { closeList(); html += "<ol>"; st.push("ol"); } html += `<li>${mdInline(m[1])}</li>`; i++; continue; }
@@ -299,6 +317,46 @@ function renderMd(src) {
   }
   closeList(); return html;
 }
+
+// ── mermaid 渲染 ───────────────────────────────────────────────
+// 库可能异步到达（本地或 CDN 回退）。就绪前先记一个 pending 标记，
+// 到位后初始化并补渲染当前详情面板里的 .mermaid 图。
+let _mermaidInited = false, _mermaidPending = false;
+function initMermaid() {
+  if (_mermaidInited || typeof window.mermaid === "undefined") return false;
+  try {
+    window.mermaid.initialize({ startOnLoad: false, securityLevel: "loose",
+      theme: "neutral",
+      // useMaxWidth:false → svg 保持自然尺寸不被压缩，超宽时由容器横向滚动承载（见 .mermaid CSS）
+      flowchart: { useMaxWidth: false }, sequence: { useMaxWidth: false },
+      gantt: { useMaxWidth: false }, er: { useMaxWidth: false } });
+    _mermaidInited = true;
+  } catch (_) { return false; }
+  return true;
+}
+async function renderMermaid(scope) {
+  const root = scope || document;
+  const nodes = root.querySelectorAll(".mermaid:not([data-done])");
+  if (!nodes.length) return;
+  if (!initMermaid()) { _mermaidPending = true; return; }  // 库未到，待回调补渲染
+  for (const el of nodes) {
+    const src = el.getAttribute("data-src") || el.textContent;
+    el.setAttribute("data-src", src);                       // 留存源码以便重渲染
+    el.setAttribute("data-done", "1");
+    el.removeAttribute("data-failed");
+    try {
+      const id = "mmd-" + Math.random().toString(36).slice(2, 9);
+      const { svg } = await window.mermaid.render(id, src);
+      el.innerHTML = svg;
+    } catch (e) {
+      el.setAttribute("data-failed", "1");
+      el.textContent = "mermaid 渲染失败：\n" + src;
+    }
+  }
+}
+// 库（本地或 CDN 回退）加载完成后的回调：补渲染任何挂起的图
+window.__mermaidReady = function () { _mermaidPending = false; renderMermaid(); };
+window.addEventListener("load", () => { if (_mermaidPending || document.querySelector(".mermaid:not([data-done])")) renderMermaid(); });
 
 let META = {}, SESSIONS = [], ENTRIES = [];
 
@@ -607,6 +665,7 @@ function select(i, node) {
     + box("📁 项目 / 目录", `<div class="metrics">${f("项目", e.project)}${f("工作目录", e.cwd, "wide")}</div>`, u ? 720 : 600);
 
   document.getElementById("detailwrap").innerHTML = html;
+  renderMermaid(document.getElementById("detailwrap"));  // 渲染本条日志内的 mermaid 图
   drawLink();
 }
 

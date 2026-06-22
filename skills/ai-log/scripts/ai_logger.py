@@ -57,6 +57,9 @@ DATE_FMT = "%Y-%m-%d"
 TIME_FMT = "%H:%M:%S"
 # 模板与脚本同目录，随仓库一起分发，不依赖任何外部固定路径
 TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.html")
+# mermaid 库本地副本（随 skill 分发）：渲染时拷到 root 根，所有日期页面共享引用
+# ../mermaid.min.js，离线断网也能画图；缺失时模板回退 CDN。
+MERMAID_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mermaid.min.js")
 # 数据以独立 JS 资产加载（file:// 下 <script src> 经典脚本不受 CORS 限制）：
 # 当天数据 → 同目录 data.js；会话别名 → root 根 aliases.js（所有日期页面共享引用 ../aliases.js）。
 # 故改别名只需重写一个 aliases.js，所有 index.html 刷新即生效，无需重渲染。
@@ -422,7 +425,22 @@ def render_html(day, html_path, root=None):
     # 3) 全局别名资产 aliases.js（root 根，所有日期共享 ../aliases.js）
     if root is not None:
         write_aliases_js(root)
+        ensure_mermaid(root)
     return True
+
+
+def ensure_mermaid(root):
+    """把本地 mermaid 库副本放到 root 根（缺失或体积不符才拷），供 ../mermaid.min.js 引用。"""
+    if not os.path.exists(MERMAID_SRC):
+        return
+    dst = os.path.join(root, "mermaid.min.js")
+    try:
+        if os.path.exists(dst) and os.path.getsize(dst) == os.path.getsize(MERMAID_SRC):
+            return  # 已是同一份，免重复拷贝
+        import shutil
+        shutil.copyfile(MERMAID_SRC, dst)
+    except OSError:
+        pass
 
 
 def write_entry(root, summary, title, id_override):
