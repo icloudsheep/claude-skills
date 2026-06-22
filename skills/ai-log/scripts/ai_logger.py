@@ -3,7 +3,7 @@
 
 用法:
     # 记录一条日志（root 解析顺序见下）
-    python3 ai_logger.py --summary "<一两句话总结>" [--id "<可选会话名>"] [--root <本次保存目录>]
+    python3 ai_logger.py --summary "<总结正文>" [--title "<标题, ≤30字>"] [--id "<可选会话名>"] [--root <本次保存目录>]
 
     # 永久指定保存目录（写入配置后退出；可同时带 --summary 立即记一条）
     python3 ai_logger.py --set-root <目录> [--summary "..."]
@@ -25,6 +25,8 @@
 计时:
     本次开始时间 = 「同一会话」当天上一条的结束时间（无则等于本次结束时间），
     因此不同会话的时间区间允许相互重叠。
+    跨午夜：当天本会话无记录、但更早日期里有本会话尾巴时，新一天首条继承昨日
+    结束时间为起点、时长按真实跨日计算，并写入 carryover 标注「前一部分在上一日」。
 
 产物（按天一个目录 <root>/{YYYY-MM-DD}/）:
     data.json   —— 结构化数据真源（脚本读写）
@@ -34,6 +36,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -134,6 +137,34 @@ def last_end_of_session(entries, codename_id):
     return None
 
 
+def find_prev_day_with_session(root, today_str, codename_id):
+    """跨午夜检测：在 root 下早于 today 的日期目录里，倒序找本会话最后一条。
+
+    用于「同一会话上一条落在前一天」的情形：返回该条所在日期与结束时间，
+    供新一天首条继承起点、并标注 carryover。找不到返回 (None, None)。
+    """
+    if not os.path.isdir(root):
+        return None, None
+    # 收集形如 YYYY-MM-DD 且严格早于今天的目录，按日期倒序
+    day_dirs = []
+    for name in os.listdir(root):
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", name) and name < today_str:
+            day_dirs.append(name)
+    for date_str in sorted(day_dirs, reverse=True):
+        data_path = os.path.join(root, date_str, "data.json")
+        if not os.path.exists(data_path):
+            continue
+        try:
+            with open(data_path, "r", encoding="utf-8") as f:
+                day = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            continue
+        prev_end = last_end_of_session(day.get("entries", []), codename_id)
+        if prev_end is not None:
+            return date_str, prev_end
+    return None, None
+
+
 def git_branch(cwd):
     """安全读取 cwd 所在仓库的当前分支名；非仓库 / 出错时返回空串。"""
     try:
@@ -146,10 +177,24 @@ def git_branch(cwd):
         return ""
 
 
-def secs_between(start, end):
-    """同日 HH:MM:SS 之间的秒差（end 早于 start 时按 0 计）。"""
+def secs_between(start, end, cross_days=0):
+    """HH:MM:SS 之间的秒差；cross_days 为跨越的天数（end 比 start 晚多少天）。
+
+    同日且 end 早于 start 时按 0 计；跨日时把 cross_days*86400 计入，
+    用于「上一条落在前一天、本条接续到今天」的真实时长。
+    """
     fmt = lambda t: sum(int(x) * f for x, f in zip(t.split(":"), (3600, 60, 1)))
-    return max(0, fmt(end) - fmt(start))
+    return max(0, fmt(end) - fmt(start) + cross_days * 86400)
+
+
+def days_between(date_a, date_b):
+    """两个 YYYY-MM-DD 之间相差的天数（date_b - date_a），解析失败返回 0。"""
+    try:
+        da = datetime.strptime(date_a, DATE_FMT)
+        db = datetime.strptime(date_b, DATE_FMT)
+        return (db - da).days
+    except ValueError:
+        return 0
 
 
 def render_html(day, html_path):
@@ -164,10 +209,12 @@ def render_html(day, html_path):
     return True
 
 
-def write_entry(root, summary, id_override):
+def write_entry(root, summary, title, id_override):
     """把一条日志写入 <root>/{date}/ 下的 data.json，并刷新 index.html。
 
     返回 (会话代号字典, 会话 id, index.html 路径)，供调用方回显。
+    跨午夜接续：本会话当天无记录、但更早日期里有，则起点继承昨日结束时间、
+    时长按真实跨日计算，并写入 carryover 元信息供 UI 标注「前一部分在上一日」。
     """
     cn = session_codename(os.environ.get("CLAUDE_CODE_SESSION_ID"))
     if id_override:
@@ -185,25 +232,41 @@ def write_entry(root, summary, id_override):
 
     day = load_day(data_path)
     day["date"] = date_str
-    # 开始时间继承「本会话」上一条的结束时间 → 不同会话区间可重叠
-    start_time = last_end_of_session(day["entries"], codename_id) or end_time
+
+    # 起点解析：优先继承「本会话」当天上一条的结束时间（同日，cross_days=0）
+    start_time = last_end_of_session(day["entries"], codename_id)
+    cross_days = 0
+    carryover = None
+    if start_time is None:
+        # 当天本会话无记录 → 看更早日期是否有本会话尾巴（跨午夜接续）
+        prev_date, prev_end = find_prev_day_with_session(root, date_str, codename_id)
+        if prev_end is not None:
+            start_time = prev_end
+            cross_days = days_between(prev_date, date_str)
+            carryover = {"prev_date": prev_date, "prev_end": prev_end}
+        else:
+            start_time = end_time  # 全新会话首条：0 时长起点
 
     cwd = os.getcwd()
-    day["entries"].append({
+    entry = {
         "seq": len(day["entries"]) + 1,           # 当天全局序号（记录顺序）
         "id": codename_id,
         "emoji": cn["emoji"],
         "name": cn["name"],
+        "title": (title or "").strip(),
         "start": start_time,
         "end": end_time,
         "datetime": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "duration": secs_between(start_time, end_time),  # 本条耗时（秒）
+        "duration": secs_between(start_time, end_time, cross_days),  # 本条耗时（秒，含跨日）
         "cwd": cwd,
         "project": os.path.basename(cwd.rstrip("/")) or cwd,
         "branch": git_branch(cwd),
         "model": os.environ.get("ANTHROPIC_MODEL", ""),
         "summary": summary.strip(),
-    })
+    }
+    if carryover:
+        entry["carryover"] = carryover  # 标注：本会话前一部分在 prev_date
+    day["entries"].append(entry)
 
     with open(data_path, "w", encoding="utf-8") as f:
         json.dump(day, f, ensure_ascii=False, indent=2)
@@ -214,6 +277,8 @@ def write_entry(root, summary, id_override):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--summary", default=None)
+    parser.add_argument("--title", default=None,
+                        help="本条日志标题（建议 ≤30 字），在网页详情面板顶部单独展示")
     parser.add_argument("--id", default=None, help="可选，手动覆盖会话代号 name")
     parser.add_argument("--root", default=None, help="本次保存目录（仅当次生效，不落盘）")
     parser.add_argument("--set-root", default=None, dest="set_root",
@@ -249,7 +314,7 @@ def main():
 
     # 解析本次保存目录：--root / --set-root > config > cache 兜底
     root, source = resolve_root(args.root or chosen_root)
-    cn, codename_id, html_path = write_entry(root, args.summary, args.id)
+    cn, codename_id, html_path = write_entry(root, args.summary, args.title, args.id)
 
     print(f"✅ 日志已保存（{cn['emoji']} {codename_id}）-> {html_path}")
     if source == "cache":

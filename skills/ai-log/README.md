@@ -21,26 +21,30 @@
 ## 工作流程
 
 1. **查状态 / 按需询问**：`ai_logger.py --status`，未永久指定时询问用户。
-2. **总结**：概述上次记录至今的工作（默认 100 字内，特殊可至 500 字）。
-3. **写入**：调用 `ai_logger.py --summary "<总结>"`，用单引号 heredoc 传参避免 shell 篡改；用户选择永久指定时用 `--set-root <目录> --summary ...` 一步到位。
+2. **拟标题 + 总结**：先拟一句标题（≤30 字），再概述上次记录至今的工作（正文默认 1000 字内，正文不写一级大标题、只用小标题与列表）。
+3. **写入**：调用 `ai_logger.py --title "<标题>" --summary "<总结>"`，summary 用单引号 heredoc 传参避免 shell 篡改；用户选择永久指定时用 `--set-root <目录> --title ... --summary ...` 一步到位。
 4. **确认**：仅输出一句确认。
 
 ## 脚本接口
 
 ```bash
-ai_logger.py --status                              # 输出配置状态 JSON，不写日志
-ai_logger.py --summary "..."                       # 按当前配置/兜底记一条
-ai_logger.py --summary "..." --root <目录>          # 本次临时指定目录
-ai_logger.py --set-root <目录> [--summary "..."]    # 永久指定目录（可顺带记一条）
-ai_logger.py --summary "..." --id <会话名>          # 手动覆盖会话代号
+ai_logger.py --status                                       # 输出配置状态 JSON，不写日志
+ai_logger.py --title "..." --summary "..."                  # 按当前配置/兜底记一条
+ai_logger.py --title "..." --summary "..." --root <目录>     # 本次临时指定目录
+ai_logger.py --set-root <目录> [--title "..." --summary "..."]  # 永久指定目录（可顺带记一条）
+ai_logger.py --summary "..." --id <会话名>                   # 手动覆盖会话代号
 ```
 
 脚本读取环境变量 `CLAUDE_CODE_SESSION_ID`（派生稳定会话代号）与 `ANTHROPIC_MODEL`（记录模型名）。
 
+## 跨午夜接续
+
+当天本会话还没记录、但更早日期里有本会话的尾巴时，脚本会把新日志存到**今天**，起点继承昨日结束时间、时长按真实跨日计算，并写入 `carryover` 字段。网页在该条详情面板与时间线节点（🌙 角标）上标注「前一部分在上一日」。无需传任何跨日参数。
+
 ## 产物（`<root>/{YYYY-MM-DD}/`）
 
-- `data.json`：结构化数据真源，含会话代号、起止时间、项目、分支、模型、总结等字段。
-- `index.html`：由 `scripts/template.html` 注入数据生成的可视化时间线，双击离线打开。
+- `data.json`：结构化数据真源，含 `title`、会话代号、起止时间、项目、分支、模型、总结等字段，跨日条目附 `carryover`。
+- `index.html`：由 `scripts/template.html` 注入数据生成的可视化时间线，标题在详情面板顶部单独展示，双击离线打开。
 
 ## 依赖文件
 

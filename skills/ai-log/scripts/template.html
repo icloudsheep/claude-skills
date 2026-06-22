@@ -76,6 +76,9 @@
   .node .num { position: absolute; right: -5px; bottom: -5px; min-width: 16px; height: 16px; padding: 0 3px;
     border-radius: 9px; background: #28323e; border: 1.5px solid var(--c); color: #fff;
     font-size: 10px; font-weight: 700; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+  /* 跨午夜接续：节点左上角月亮角标 */
+  .node .moon { position: absolute; left: -7px; top: -7px; font-size: 12px; line-height: 1;
+    filter: drop-shadow(0 1px 3px rgba(40,40,90,.5)); }
   .node:hover .knob { transform: scale(1.16); }
   .node.active .knob { transform: scale(1.22); box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 30%, transparent), 0 0 20px var(--c); }
 
@@ -96,6 +99,20 @@
   .d-emo { font-size: 30px; filter: drop-shadow(0 3px 10px color-mix(in srgb, var(--c) 60%, transparent)); }
   .d-who { font-size: 18px; font-weight: 680; }
   .d-seq { margin-left: auto; font-size: 12px; color: var(--dim); border: 1px solid var(--line); padding: 3px 10px; border-radius: 999px; }
+
+  /* 标题：每条日志单独拎出的醒目大标题，置于详情面板首框顶部 */
+  .d-title { font-size: 21px; font-weight: 720; line-height: 1.35; letter-spacing: .3px;
+    color: #131a2c; margin-bottom: 12px; }
+  /* 标题下方的会话头降级为副信息 */
+  .box .d-title + .d-head { padding-top: 10px; border-top: 1px solid var(--line); }
+  .box .d-title + .d-head .d-emo { font-size: 22px; }
+  .box .d-title + .d-head .d-who { font-size: 14px; color: var(--dim); font-weight: 600; }
+
+  /* 跨午夜接续标注（详情面板）：月色提示条 */
+  .carry { margin-top: 12px; padding: 9px 13px; font-size: 12.5px; line-height: 1.5;
+    color: #3a3357; background: linear-gradient(100deg, rgba(157,123,255,.16), rgba(110,168,254,.14));
+    border: 1px solid rgba(157,123,255,.4); border-radius: 10px; }
+  .carry b { color: #2a2247; }
 
   .sumbox .d-sum { overflow: visible; }
 
@@ -257,7 +274,8 @@ function build() {
     const n = document.createElement("div");
     n.className = "node"; n.style.left = laneX(s.lane) + "px"; n.style.top = y + "px";
     n.style.setProperty("--c", s.color); n.style.animationDelay = (500 + i * 110) + "ms";
-    n.innerHTML = `<div class="knob">${e.emoji}<span class="num">${e.seq != null ? e.seq : i + 1}</span></div>`;
+    const moon = e.carryover ? `<span class="moon" title="接续自 ${esc(e.carryover.prev_date)}">🌙</span>` : "";
+    n.innerHTML = `<div class="knob">${e.emoji}<span class="num">${e.seq != null ? e.seq : i + 1}</span>${moon}</div>`;
     n.dataset.i = i; n.dataset.sid = e.id;  // 会话 ID 用于 toggle
     n.onclick = () => select(i, n);
     stage.appendChild(n);
@@ -331,9 +349,22 @@ function select(i, node) {
   const box = (title, inner, d) => `<div class="box accent" style="--c:${s.color}; animation-delay:${d}ms">
     ${title ? `<div class="bt">${title}</div>` : ""}${inner}</div>`;
 
-  // 拆成多个磨砂玻璃框，纵向堆叠（首框只有头部，不再重复 emoji 标题）
+  // 跨午夜接续标注：本会话前一部分在上一日
+  const co = e.carryover;
+  const carryNote = co
+    ? `<div class="carry">🌙 接续自 <b>${esc(co.prev_date)}</b>（本会话前一部分在上一日，止于 ${esc(co.prev_end)}）</div>`
+    : "";
+
+  // 首框：标题单独拎出置顶（无标题时回退为会话名），其下会话头 + 跨日标注
+  const titleText = e.title ? esc(e.title) : `${esc(s.name)}-${tail}`;
+  const headInner =
+    `<div class="d-title">${titleText}</div>`
+    + `<div class="d-head"><span class="d-emo">${e.emoji}</span><span class="d-who">${esc(s.name)}-${tail}</span><span class="d-seq">#${e.seq != null ? e.seq : i + 1}</span></div>`
+    + carryNote;
+
+  // 拆成多个磨砂玻璃框，纵向堆叠（首框：标题置顶 + 会话头 + 跨日标注）
   const html =
-    box("", `<div class="d-head"><span class="d-emo">${e.emoji}</span><span class="d-who">${esc(s.name)}-${tail}</span><span class="d-seq">#${e.seq != null ? e.seq : i + 1}</span></div>`, 0)
+    box("", headInner, 0)
     + box("📝 日志内容", `<div class="sumbox"><div class="d-sum md">${renderMd(e.summary)}</div></div>`, 120)
     + box("⏱ 时间", `<div class="metrics">${f("时段", `${e.start} → ${e.end}`)}${f("耗时", fmtDur(e.duration))}${f("日期", e.datetime || DATA.date)}</div>`, 240)
     + box("🌿 Git 分支", e.branch ? `<div class="v mono">${esc(e.branch)}</div>` : `<div class="v" style="color:var(--dim)">（不可用）</div>`, 360)
