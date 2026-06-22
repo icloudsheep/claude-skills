@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 工作日志 · 时间线</title>
+<style>
+  :root {
+    --panel: rgba(255,255,255,.5); --line: rgba(30,40,70,.16);
+    --txt: #1c2438; --dim: #5a6884;
+    --glass: rgba(255,255,255,.52); --topbar-h: 150px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #c3cdf0; color: var(--txt);
+    font: 14px/1.6 -apple-system, "SF Pro", "PingFang SC", Segoe UI, sans-serif;
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column; }
+  #app { flex: 1 0 auto; }  /* 撑满剩余空间，把页脚顶到最底部 */
+
+  /* 背景：明亮多彩交融流动（已移除浮动 emoji 动画以消除掉帧） */
+  .bg { position: fixed; inset: 0; z-index: -3; overflow: hidden; will-change: background-position;
+    background: linear-gradient(125deg, #ff9eb3, #ffd17a, #9ee6c4, #8ec5ff, #c5a3ff, #ff9ed6);
+    background-size: 360% 360%; animation: huewash 56s ease-in-out infinite; }
+  .bg::after { content: ""; position: absolute; inset: 0;
+    background: radial-gradient(760px 560px at 12% -10%, rgba(255,255,255,.5), transparent 60%),
+                radial-gradient(820px 600px at 90% 110%, rgba(255,210,150,.42), transparent 62%),
+                radial-gradient(700px 520px at 80% 8%, rgba(150,210,255,.4), transparent 60%); }
+
+  @keyframes huewash { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+
+  /* 吸顶头部：整块磨砂玻璃 */
+  .topbar { position: sticky; top: 0; z-index: 20; padding: 20px clamp(18px,4vw,64px) 16px;
+    background: var(--glass); backdrop-filter: blur(20px) saturate(150%);
+    border-bottom: 1px solid var(--line); box-shadow: 0 10px 30px -18px rgba(40,50,90,.45);
+    animation: drop 1.4s cubic-bezier(.2,.8,.2,1) both; }
+  h1 { font-size: 24px; font-weight: 680; letter-spacing: .5px; display: flex; align-items: center; gap: 12px; }
+  h1 .cal { filter: drop-shadow(0 4px 12px rgba(120,160,255,.5)); }
+  .sub { color: var(--dim); margin-top: 5px; font-size: 13px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px 6px 9px;
+    background: rgba(255,255,255,.55); border: 1px solid var(--line); border-radius: 999px;
+    font-size: 12.5px; cursor: pointer; user-select: none; color: var(--txt);
+    transition: transform .4s, box-shadow .5s, background .5s;
+    /* 选中态：外发光阴影 */
+    box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--c) 60%, transparent), 0 6px 16px -7px var(--c); }
+  .chip:hover { transform: translateY(-2px); }
+  /* 未选中态：内陷阴影 + 去色，无外发光 */
+  .chip.off { box-shadow: inset 0 2px 6px rgba(40,50,90,.28); filter: grayscale(.85); opacity: .55; background: rgba(255,255,255,.28); }
+  .chip .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+  .chip.off .dot { box-shadow: none; }
+  .chip .emo { font-size: 15px; } .chip .cnt { color: var(--dim); font-size: 11px; }
+
+  .wrap { display: flex; gap: clamp(24px,4vw,64px); align-items: flex-start; padding: 26px clamp(18px,4vw,64px) 40px; }
+  /* 左侧泳道：独立滚动视口 */
+  .left { position: sticky; top: calc(var(--topbar-h) + 18px); flex: none;
+    max-height: calc(100vh - var(--topbar-h) - 38px); overflow-y: auto; overflow-x: hidden; }
+  .left::-webkit-scrollbar { width: 9px; }
+  .left::-webkit-scrollbar-thumb { background: rgba(60,72,110,.32); border-radius: 9px; }
+  .left::-webkit-scrollbar-thumb:hover { background: rgba(60,72,110,.5); }
+  .left::-webkit-scrollbar-track { background: transparent; }
+  .stage { position: relative; }
+  /* 右侧：随页面流动，无自身滚动条 */
+  .right { flex: 1; min-width: 320px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* 左侧泳道 */
+  svg.rails { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 1; }
+  .rail { stroke-width: 6; fill: none; opacity: .5; stroke-linecap: round; stroke-dasharray: var(--len); stroke-dashoffset: var(--len);
+          animation: draw 2s cubic-bezier(.4,0,.2,1) forwards; }
+  .node { position: absolute; width: 34px; height: 34px; transform: translate(-50%, -50%); cursor: pointer; z-index: 2;
+    animation: pop 1s cubic-bezier(.2,.9,.3,1.3) both; transition: left .9s cubic-bezier(.2,.8,.2,1); }
+  .node .knob { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; position: relative;
+    background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--c) 78%, #fff), color-mix(in srgb, var(--c) 35%, #2a344a));
+    border: 2px solid color-mix(in srgb, var(--c) 80%, #fff); font-size: 14px; line-height: 1;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 16%, transparent), 0 4px 14px -2px var(--c);
+    transition: transform .44s, box-shadow .44s; }
+  .node .num { position: absolute; right: -5px; bottom: -5px; min-width: 16px; height: 16px; padding: 0 3px;
+    border-radius: 9px; background: #28323e; border: 1.5px solid var(--c); color: #fff;
+    font-size: 10px; font-weight: 700; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+  .node:hover .knob { transform: scale(1.16); }
+  .node.active .knob { transform: scale(1.22); box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 30%, transparent), 0 0 20px var(--c); }
+
+  /* 连接线：静态虚线、低透明、最底层 */
+  svg.link { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: -1; }
+  svg.link path { fill: none; stroke-width: 2; stroke-dasharray: 5 4; opacity: 0; transition: opacity .6s; }
+  svg.link path.on { opacity: .5; }
+
+  /* 右侧：拆成多个磨砂玻璃框，纵向堆叠 */
+  .box { background: var(--glass); border: 1px solid var(--line); border-radius: 16px;
+    padding: 16px 20px; backdrop-filter: blur(16px) saturate(150%);
+    box-shadow: 0 14px 38px -22px rgba(40,50,90,.5); animation: fadein .84s cubic-bezier(.2,.8,.2,1) both; }
+  .box.accent { border-left: 4px solid var(--c, var(--line)); }
+  .box .bt { font-size: 11px; letter-spacing: .4px; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; display: flex; align-items: center; gap: 7px; }
+  .empty { text-align: center; color: var(--dim); padding: 56px 20px; }
+
+  .d-head { display: flex; align-items: center; gap: 12px; }
+  .d-emo { font-size: 30px; filter: drop-shadow(0 3px 10px color-mix(in srgb, var(--c) 60%, transparent)); }
+  .d-who { font-size: 18px; font-weight: 680; }
+  .d-seq { margin-left: auto; font-size: 12px; color: var(--dim); border: 1px solid var(--line); padding: 3px 10px; border-radius: 999px; }
+
+  .sumbox .d-sum { overflow: visible; }
+
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+  .f { background: rgba(255,255,255,.4); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+  .f .k { font-size: 10.5px; color: var(--dim); letter-spacing: .3px; text-transform: uppercase; }
+  .f .v { font-size: 13px; margin-top: 3px; word-break: break-all; }
+  .f.wide { grid-column: 1 / -1; } .f .v.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+
+  /* markdown 排版 */
+  .md > :first-child { margin-top: 0; } .md > :last-child { margin-bottom: 0; }
+  .md { font-size: 14.5px; line-height: 1.7; color: #20283a; }
+  .md h1,.md h2,.md h3 { margin: 14px 0 8px; line-height: 1.3; font-weight: 680; }
+  .md h1 { font-size: 18px; } .md h2 { font-size: 16px; } .md h3 { font-size: 14.5px; color: var(--dim); }
+  .md p { margin: 8px 0; } .md ul,.md ol { margin: 8px 0; padding-left: 22px; } .md li { margin: 3px 0; }
+  .md a { color: color-mix(in srgb, var(--c) 60%, #1c2438); text-decoration: none; border-bottom: 1px dashed currentColor; }
+  .md code { background: rgba(40,50,90,.1); padding: 1.5px 6px; border-radius: 5px; font: 12.5px/1.5 ui-monospace, Menlo, monospace; }
+  .md pre { background: rgba(40,50,90,.08); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 10px 0; }
+  .md pre code { background: none; padding: 0; }
+  .md blockquote { margin: 10px 0; padding: 4px 14px; border-left: 3px solid var(--c); color: var(--dim); background: rgba(40,50,90,.05); border-radius: 0 8px 8px 0; }
+  .md table { border-collapse: collapse; margin: 10px 0; width: 100%; font-size: 13px; }
+  .md th,.md td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+  .md th { background: color-mix(in srgb, var(--c) 22%, transparent); font-weight: 650; }
+  .md tr:nth-child(even) td { background: rgba(40,50,90,.04); }
+  .md hr { border: none; border-top: 1px dashed var(--line); margin: 12px 0; }
+  .md strong { color: #0d1322; } .md em { color: #3a4458; }
+
+  /* 页脚：磨砂玻璃，随内容流动（不固定） */
+  footer { margin-top: 10px;
+    padding: 13px clamp(18px,4vw,64px); background: var(--glass);
+    backdrop-filter: blur(20px) saturate(150%); border-top: 1px solid var(--line);
+    box-shadow: 0 -10px 30px -18px rgba(40,50,90,.4); color: var(--dim); font-size: 12px;
+    display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; justify-content: center; }
+  footer .span { color: var(--txt); font-variant-numeric: tabular-nums; }
+
+  @keyframes drop { from{opacity:0; transform:translateY(-14px)} to{opacity:1; transform:none} }
+  @keyframes pop { from{opacity:0; transform:translate(-50%,-50%) scale(.4)} to{opacity:1; transform:translate(-50%,-50%) scale(1)} }
+  @keyframes draw { to{stroke-dashoffset:0} }
+  @keyframes fadein { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+  @media (prefers-reduced-motion: reduce) { *{animation:none !important} }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<svg class="link"><path id="linkpath"></path></svg>
+<div class="topbar" id="topbar"></div>
+<div id="app"></div>
+<footer id="footer"></footer>
+<script>
+const DATA = __LOG_DATA__;
+
+// 高级感配色：低饱和宝石色 + 霓虹
+const PALETTE = ["#6ea8fe","#9d7bff","#f178b6","#ffb454","#46d1c4","#7ee787","#ff8a8a","#c084fc","#56c2ff","#ffd166"];
+const ROW = 72, TOP = 30, LANE_X0 = 40, LANE_GAP = 52;
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const laneX = (lane) => LANE_X0 + lane * LANE_GAP;
+const rowY = (i) => TOP + i * ROW;
+const fmtDur = (s) => s == null ? "" : (s >= 3600 ? `${Math.floor(s/3600)}h${Math.floor(s%3600/60)}m` : s >= 60 ? `${Math.floor(s/60)}m${s%60}s` : `${s}s`);
+
+function mdInline(s) {
+  return esc(s)
+    .replace(/`([^`]+)`/g, (m, c) => `<code>${c}</code>`)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+function renderMd(src) {
+  const lines = String(src || "").replace(/\r\n/g, "\n").split("\n");
+  let html = "", i = 0;
+  const st = []; const closeList = () => { while (st.length) html += st.pop() === "ul" ? "</ul>" : "</ol>"; };
+  while (i < lines.length) {
+    const ln = lines[i];
+    if (/^```/.test(ln)) { closeList(); i++; let code = "";
+      while (i < lines.length && !/^```/.test(lines[i])) { code += esc(lines[i]) + "\n"; i++; }
+      i++; html += `<pre><code>${code}</code></pre>`; continue; }
+    if (/\|/.test(ln) && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i+1].replace(/[^|:\-\s]/g, ""))) {
+      closeList(); const cells = (r) => r.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map((c) => c.trim());
+      const head = cells(ln); i += 2;
+      html += "<table><thead><tr>" + head.map((c) => `<th>${mdInline(c)}</th>`).join("") + "</tr></thead><tbody>";
+      while (i < lines.length && /\|/.test(lines[i])) { html += "<tr>" + cells(lines[i]).map((c) => `<td>${mdInline(c)}</td>`).join("") + "</tr>"; i++; }
+      html += "</tbody></table>"; continue; }
+    let m;
+    if ((m = ln.match(/^(#{1,3})\s+(.*)/))) { closeList(); html += `<h${m[1].length}>${mdInline(m[2])}</h${m[1].length}>`; i++; continue; }
+    if (/^\s*>\s?/.test(ln)) { closeList(); html += `<blockquote>${mdInline(ln.replace(/^\s*>\s?/, ""))}</blockquote>`; i++; continue; }
+    if (/^\s*([-*_])\1{1,}\s*$/.test(ln)) { closeList(); html += "<hr>"; i++; continue; }
+    if ((m = ln.match(/^\s*\d+\.\s+(.*)/))) { if (st[st.length-1] !== "ol") { closeList(); html += "<ol>"; st.push("ol"); } html += `<li>${mdInline(m[1])}</li>`; i++; continue; }
+    if ((m = ln.match(/^\s*[-*]\s+(.*)/))) { if (st[st.length-1] !== "ul") { closeList(); html += "<ul>"; st.push("ul"); } html += `<li>${mdInline(m[1])}</li>`; i++; continue; }
+    if (ln.trim() === "") { closeList(); i++; continue; }
+    closeList(); html += `<p>${mdInline(ln)}</p>`; i++;
+  }
+  closeList(); return html;
+}
+
+let META = {}, SESSIONS = [], ENTRIES = [];
+
+function build() {
+  ENTRIES = (DATA.entries || []).slice();
+
+  // 会话元信息：列号 + 颜色
+  SESSIONS = []; META = {};
+  ENTRIES.forEach((e) => {
+    if (!META[e.id]) {
+      META[e.id] = { id: e.id, emoji: e.emoji, name: e.name, color: PALETTE[SESSIONS.length % PALETTE.length], lane: SESSIONS.length, count: 0, hidden: false };
+      SESSIONS.push(META[e.id]);
+    }
+    META[e.id].count++;
+  });
+
+  // 吸顶头部：标题 + 图例胶囊
+  const topbar = document.getElementById("topbar");
+  const head = document.createElement("div");
+  head.innerHTML = `<h1><span class="cal">🗓️</span> AI 工作日志 · ${esc(DATA.date)}</h1>
+    <div class="sub">${SESSIONS.length} 个会话 · ${ENTRIES.length} 条记录 · 点击胶囊切换该会话显示</div>`;
+  const legend = document.createElement("div");
+  legend.className = "legend";
+  SESSIONS.forEach((s) => {
+    const c = document.createElement("div");
+    c.className = "chip"; c.style.setProperty("--c", s.color);
+    c.innerHTML = `<span class="dot"></span><span class="emo">${s.emoji}</span>${esc(s.name)}-${s.id.split("-")[1] || ""} <span class="cnt">×${s.count}</span>`;
+    c.onclick = () => toggleSession(s.id, c);
+    legend.appendChild(c);
+  });
+  head.appendChild(legend);
+  topbar.appendChild(head);
+
+  // 左侧泳道容器
+  const wrap = document.createElement("div");
+  wrap.className = "wrap";
+  // 左侧滚动视口
+  const left = document.createElement("div");
+  left.className = "left"; left.id = "lane";
+  // 内部舞台（承载 svg + 节点，按全部内容高度撑开，在视口内滚动）
+  const stage = document.createElement("div");
+  stage.className = "stage"; stage.id = "stage";
+  const stageW = LANE_X0 + SESSIONS.length * LANE_GAP + 24;
+  stage.style.width = stageW + "px";
+  stage.style.height = (rowY(ENTRIES.length - 1) + TOP + 30) + "px";
+  left.style.width = (stageW + 14) + "px";  // 14px 预留滚动条
+
+  // 泳道竖线（同会话首末节点连线）
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("class", "rails");
+  SESSIONS.forEach((s) => {
+    const idx = ENTRIES.map((e, k) => e.id === s.id ? k : -1).filter((k) => k >= 0);
+    const y1 = rowY(idx[0]), y2 = rowY(idx[idx.length - 1]), x = laneX(s.lane);
+    const line = document.createElementNS(ns, "line");
+    line.setAttribute("x1", x); line.setAttribute("x2", x); line.setAttribute("y1", y1); line.setAttribute("y2", y2);
+    line.setAttribute("stroke", s.color); line.setAttribute("class", "rail");
+    line.dataset.sid = s.id;  // 用于 toggleSession 隐藏/显示
+    line.style.setProperty("--len", Math.max(y2 - y1, 1));
+    svg.appendChild(line);
+  });
+  stage.appendChild(svg);
+
+  // 节点
+  ENTRIES.forEach((e, i) => {
+    const s = META[e.id], y = rowY(i);
+    const n = document.createElement("div");
+    n.className = "node"; n.style.left = laneX(s.lane) + "px"; n.style.top = y + "px";
+    n.style.setProperty("--c", s.color); n.style.animationDelay = (500 + i * 110) + "ms";
+    n.innerHTML = `<div class="knob">${e.emoji}<span class="num">${e.seq != null ? e.seq : i + 1}</span></div>`;
+    n.dataset.i = i; n.dataset.sid = e.id;  // 会话 ID 用于 toggle
+    n.onclick = () => select(i, n);
+    stage.appendChild(n);
+  });
+  left.appendChild(stage);
+
+  // 右侧容器（初始空）
+  const right = document.createElement("div");
+  right.className = "right";
+  right.innerHTML = '<div class="box empty">👈 点击左侧任一节点查看该条日志详情</div>';
+  right.id = "detailwrap";
+
+  wrap.appendChild(left); wrap.appendChild(right);
+  document.getElementById("app").appendChild(wrap);
+
+  // 泳道滚动时重绘连接线
+  left.addEventListener("scroll", drawLink, { passive: true });
+
+  // 页脚：标注时间跨度
+  renderFooter();
+}
+
+let ACTIVE = null;
+
+// 点击胶囊 → 切换该会话；隐藏后压缩其列、整体左移、左栏变窄（日志框随之变宽）
+function toggleSession(id, chip) {
+  const s = META[id]; s.hidden = !s.hidden;
+  chip.classList.toggle("off", s.hidden);
+  if (s.hidden && ACTIVE && ACTIVE.dataset.sid === id) closeDetail();
+  relayout();
+}
+
+// 仅对可见会话重排列号，节点/泳道线随之平移，左栏宽度收缩
+function relayout() {
+  let lane = 0;
+  SESSIONS.forEach((s) => { s.lane = s.hidden ? -1 : lane++; });
+  const visN = lane;
+
+  document.querySelectorAll(".node").forEach((n) => {
+    const s = META[n.dataset.sid];
+    n.style.display = s.hidden ? "none" : "";
+    if (!s.hidden) n.style.left = laneX(s.lane) + "px";
+  });
+  document.querySelectorAll(".rail").forEach((r) => {
+    const s = META[r.dataset.sid];
+    r.style.display = s.hidden ? "none" : "";
+    if (!s.hidden) { const x = laneX(s.lane); r.setAttribute("x1", x); r.setAttribute("x2", x); }
+  });
+  const stageW = LANE_X0 + Math.max(visN, 1) * LANE_GAP + 24;
+  const stage = document.getElementById("stage"), lane0 = document.getElementById("lane");
+  stage.style.transition = lane0.style.transition = "width .9s cubic-bezier(.2,.8,.2,1)";
+  stage.style.width = stageW + "px";
+  lane0.style.width = (stageW + 14) + "px";
+  drawLink();
+}
+
+function closeDetail() {
+  document.querySelectorAll(".node.active").forEach((n) => n.classList.remove("active"));
+  ACTIVE = null;
+  document.getElementById("detailwrap").innerHTML = '<div class="box empty">👈 点击左侧任一节点查看该条日志详情</div>';
+  document.getElementById("linkpath").classList.remove("on");
+}
+
+function select(i, node) {
+  if (ACTIVE === node) { closeDetail(); return; }
+  const e = ENTRIES[i], s = META[e.id], tail = e.id.split("-")[1] || "";
+  document.querySelectorAll(".node.active").forEach((n) => n.classList.remove("active"));
+  node.classList.add("active"); ACTIVE = node;
+
+  const f = (k, v, cls) => v ? `<div class="f ${cls||""}"><div class="k">${k}</div><div class="v ${cls||""}">${esc(v)}</div></div>` : "";
+  const box = (title, inner, d) => `<div class="box accent" style="--c:${s.color}; animation-delay:${d}ms">
+    ${title ? `<div class="bt">${title}</div>` : ""}${inner}</div>`;
+
+  // 拆成多个磨砂玻璃框，纵向堆叠（首框只有头部，不再重复 emoji 标题）
+  const html =
+    box("", `<div class="d-head"><span class="d-emo">${e.emoji}</span><span class="d-who">${esc(s.name)}-${tail}</span><span class="d-seq">#${e.seq != null ? e.seq : i + 1}</span></div>`, 0)
+    + box("📝 日志内容", `<div class="sumbox"><div class="d-sum md">${renderMd(e.summary)}</div></div>`, 120)
+    + box("⏱ 时间", `<div class="metrics">${f("时段", `${e.start} → ${e.end}`)}${f("耗时", fmtDur(e.duration))}${f("日期", e.datetime || DATA.date)}</div>`, 240)
+    + box("🌿 Git 分支", e.branch ? `<div class="v mono">${esc(e.branch)}</div>` : `<div class="v" style="color:var(--dim)">（不可用）</div>`, 360)
+    + box("🤖 模型", `<div class="v mono">${esc(e.model) || '<span style="color:var(--dim)">未知</span>'}</div>`, 480)
+    + box("📁 项目 / 目录", `<div class="metrics">${f("项目", e.project)}${f("工作目录", e.cwd, "wide")}</div>`, 600);
+
+  document.getElementById("detailwrap").innerHTML = html;
+  drawLink();
+}
+
+function drawLink() {
+  const path = document.getElementById("linkpath");
+  if (!ACTIVE) { path.classList.remove("on"); return; }
+  const wrap = document.getElementById("detailwrap");
+  const a = ACTIVE.getBoundingClientRect(), b = wrap.getBoundingClientRect();
+  const x1 = a.right, y1 = a.top + a.height / 2, x2 = b.left, y2 = b.top + 30, mx = x1 + (x2 - x1) * 0.5;
+  path.setAttribute("d", `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`);
+  path.setAttribute("stroke", ACTIVE.style.getPropertyValue("--c"));
+  path.classList.add("on");
+}
+
+function renderFooter() {
+  const fo = document.getElementById("footer");
+  if (!ENTRIES.length) { fo.textContent = "AI 工作日志"; return; }
+  const first = ENTRIES[0].start, last = ENTRIES[ENTRIES.length - 1].end;
+  const toS = (t) => t.split(":").reduce((a, x) => a * 60 + +x, 0);
+  fo.innerHTML = `AI 工作日志 · 点击节点看详情 · 点击胶囊切换会话 ·
+    跨度 <span class="span">${first} → ${last}</span> ·
+    共 <span class="span">${fmtDur(toS(last) - toS(first))}</span> · ${ENTRIES.length} 条`;
+}
+
+// 测量吸顶实际高度，写入 --topbar-h，避免右侧/节点滚动时与磨砂玻璃碰撞
+function syncTopbar() {
+  const h = document.getElementById("topbar").offsetHeight;
+  document.documentElement.style.setProperty("--topbar-h", h + "px");
+}
+
+window.addEventListener("scroll", drawLink, { passive: true });
+window.addEventListener("resize", () => { syncTopbar(); drawLink(); });
+
+build();
+syncTopbar();
+</script>
+</body>
+</html>

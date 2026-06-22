@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Python
+__pycache__/
+*.pyc
+
+# ai-log 本地产物（按天目录，不应提交）
+AI_log/
+**/AI_log/*/
