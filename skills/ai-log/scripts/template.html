@@ -49,6 +49,59 @@
   .chip .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
   .chip.off .dot { box-shadow: none; }
   .chip .emo { font-size: 15px; } .chip .cnt { color: var(--dim); font-size: 11px; }
+  /* 自定义名后的自动代号：半透明小字 */
+  .auto-name { font-size: .82em; opacity: .5; margin-left: 2px; font-weight: 400; }
+
+  /* 轻量 toast：右键改名后的反馈 */
+  .toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%) translateY(12px);
+    z-index: 60; padding: 10px 18px; border-radius: 12px; font-size: 13px; color: var(--txt);
+    background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(20px) saturate(150%);
+    box-shadow: 0 14px 38px -16px rgba(40,50,90,.5); opacity: 0; pointer-events: none;
+    transition: opacity .35s, transform .35s; }
+  .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* 右键上下文菜单：鼠标位置动画弹出 */
+  .ctxmenu { position: fixed; z-index: 70; min-width: 150px; padding: 6px;
+    background: var(--glass); border: 1px solid var(--line); border-radius: 12px;
+    backdrop-filter: blur(22px) saturate(160%); box-shadow: 0 18px 44px -16px rgba(40,50,90,.55);
+    opacity: 0; transform: scale(.86); transition: opacity .16s ease, transform .18s cubic-bezier(.2,.9,.3,1.25); }
+  .ctxmenu.on { opacity: 1; transform: scale(1); }
+  .ctxmenu .ctx-head { font-size: 11.5px; color: var(--dim); padding: 5px 10px 7px;
+    border-bottom: 1px solid var(--line); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .ctxmenu .ctx-head .emo { font-size: 14px; }
+  .ctxmenu .ctx-item { padding: 8px 11px; border-radius: 8px; font-size: 13px; cursor: pointer;
+    color: var(--txt); transition: background .15s; white-space: nowrap; }
+  .ctxmenu .ctx-item:hover { background: rgba(110,168,254,.18); }
+
+  /* 自定义居中模态输入框：背景仅模糊不黑化 + 磨砂半透明卡片 + 动画展开 */
+  .modal-overlay { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center;
+    backdrop-filter: blur(0px); opacity: 0; pointer-events: none;
+    transition: opacity .26s ease, backdrop-filter .26s ease; }
+  .modal-overlay.on { opacity: 1; backdrop-filter: blur(6px); pointer-events: auto; }
+  .modal { width: min(420px, calc(100vw - 48px)); padding: 22px 22px 18px;
+    background: var(--glass); border: 1px solid rgba(255,255,255,.6); border-radius: 18px;
+    backdrop-filter: blur(26px) saturate(165%);
+    box-shadow: 0 30px 70px -24px rgba(20,28,60,.65), inset 0 1px 0 rgba(255,255,255,.5);
+    transform: scale(.84) translateY(10px); opacity: 0;
+    transition: transform .3s cubic-bezier(.2,.9,.3,1.3), opacity .26s ease; }
+  .modal-overlay.on .modal { transform: scale(1) translateY(0); opacity: 1; }
+  .modal-title { font-size: 17px; font-weight: 680; letter-spacing: .3px; color: #131a2c; }
+  .modal-desc { font-size: 12.5px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
+  .modal-desc b { color: var(--txt); font-weight: 650; }
+  .modal-input { width: 100%; margin-top: 16px; padding: 11px 14px; font-size: 14px; color: var(--txt);
+    background: rgba(255,255,255,.62); border: 1px solid var(--line); border-radius: 11px; outline: none;
+    transition: border-color .2s, box-shadow .2s; }
+  .modal-input::placeholder { color: rgba(90,104,132,.6); }
+  .modal-input:focus { border-color: #6ea8fe; box-shadow: 0 0 0 3px rgba(110,168,254,.25); background: rgba(255,255,255,.8); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+  .modal-btn { padding: 8px 18px; font-size: 13px; font-weight: 600; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--line); transition: transform .18s, box-shadow .3s, background .25s, filter .2s; }
+  .modal-btn:hover { transform: translateY(-1px); }
+  .modal-btn.cancel { background: rgba(255,255,255,.5); color: var(--dim); }
+  .modal-btn.cancel:hover { color: var(--txt); background: rgba(255,255,255,.7); }
+  .modal-btn.ok { color: #fff; border-color: transparent;
+    background: linear-gradient(120deg, #6ea8fe, #9d7bff); box-shadow: 0 8px 20px -8px rgba(110,123,255,.7); }
+  .modal-btn.ok:hover { filter: brightness(1.06); box-shadow: 0 10px 24px -8px rgba(110,123,255,.85); }
 
   .wrap { display: flex; gap: clamp(24px,4vw,64px); align-items: flex-start; padding: 26px clamp(18px,4vw,64px) 40px; }
   /* 左侧泳道：独立滚动视口 */
@@ -161,16 +214,57 @@
 <div class="topbar" id="topbar"></div>
 <div id="app"></div>
 <footer id="footer"></footer>
+<!-- 数据走外部 JS 资产：file:// 下经典脚本不受 CORS 限制，页面运行时自行读取。
+     data.js 为当天数据（同目录）；aliases.js 为全局会话别名（root 根，所有日期共享 ../aliases.js）。
+     改别名只需重写 aliases.js，所有页面刷新即生效，无需重渲染 HTML。 -->
+<script src="./data.js"></script>
+<script src="../aliases.js"></script>
 <script>
-const DATA = __LOG_DATA__;
+// 数据真源：来自 data.js；缺失时退化为空，避免离线打开报错。
+const DATA = (typeof window.AILOG_DATA !== "undefined" && window.AILOG_DATA) || { date: "", entries: [] };
 
 // 高级感配色：低饱和宝石色 + 霓虹
 const PALETTE = ["#6ea8fe","#9d7bff","#f178b6","#ffb454","#46d1c4","#7ee787","#ff8a8a","#c084fc","#56c2ff","#ffd166"];
 const ROW = 72, TOP = 30, LANE_X0 = 40, LANE_GAP = 52;
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+// CSS 属性选择器转义（会话 id 通常安全，仍做兜底以防特殊字符）
+const cssEsc = (s) => (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/["\\]/g, "\\$&");
 const laneX = (lane) => LANE_X0 + lane * LANE_GAP;
 const rowY = (i) => TOP + i * ROW;
 const fmtDur = (s) => s == null ? "" : (s >= 3600 ? `${Math.floor(s/3600)}h${Math.floor(s%3600/60)}m` : s >= 60 ? `${Math.floor(s/60)}m${s%60}s` : `${s}s`);
+const fmtTok = (n) => n == null ? "" : (n >= 1e6 ? (n/1e6).toFixed(2)+"M" : n >= 1e3 ? (n/1e3).toFixed(1)+"k" : String(n));
+
+// ── 会话自定义别名 ─────────────────────────────────────────────
+// 两层：localStorage 软别名（右键即时改、跨所有日期同源共享）覆盖 DATA.aliases
+// 硬别名（脚本 --rename 固化注入，换设备/清缓存仍在）。软层优先。
+const LS_KEY = "ai-log:aliases";
+// 硬别名来自全局资产 aliases.js（脚本 --rename 维护，所有日期共享）；软别名见 localStorage。
+const HARD_ALIASES = (typeof window.AILOG_ALIASES !== "undefined" && window.AILOG_ALIASES) || {};
+function loadLocalAliases() {
+  try { const v = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); return v && typeof v === "object" ? v : {}; }
+  catch (_) { return {}; }
+}
+function saveLocalAlias(id, alias) {
+  const m = loadLocalAliases();
+  if (alias) m[id] = alias; else delete m[id];
+  try { localStorage.setItem(LS_KEY, JSON.stringify(m)); } catch (_) {}
+}
+// 该会话当前生效的自定义名（软层优先，无则硬层，再无则 null）
+function aliasOf(id) {
+  const local = loadLocalAliases();
+  if (id in local) return local[id];
+  if (id in HARD_ALIASES) return HARD_ALIASES[id];
+  return null;
+}
+// 自动生成的原始代号（name-suffix）
+const autoName = (s) => `${s.name}-${s.id.split("-")[1] || ""}`;
+// 展示用 HTML：有别名时为「自定义名(自动名)」，括号及内为半透明小字
+function displayNameHtml(s) {
+  const alias = aliasOf(s.id), auto = autoName(s);
+  return alias
+    ? `${esc(alias)}<span class="auto-name">(${esc(auto)})</span>`
+    : esc(auto);
+}
 
 function mdInline(s) {
   return esc(s)
@@ -230,9 +324,11 @@ function build() {
   legend.className = "legend";
   SESSIONS.forEach((s) => {
     const c = document.createElement("div");
-    c.className = "chip"; c.style.setProperty("--c", s.color);
-    c.innerHTML = `<span class="dot"></span><span class="emo">${s.emoji}</span>${esc(s.name)}-${s.id.split("-")[1] || ""} <span class="cnt">×${s.count}</span>`;
+    c.className = "chip"; c.style.setProperty("--c", s.color); c.dataset.sid = s.id;
+    c.innerHTML = `<span class="dot"></span><span class="emo">${s.emoji}</span><span class="chip-name">${displayNameHtml(s)}</span> <span class="cnt">×${s.count}</span>`;
     c.onclick = () => toggleSession(s.id, c);
+    c.oncontextmenu = (ev) => { ev.preventDefault(); openChipMenu(ev, s); };
+    c.title = "左键切换显隐 · 右键自定义名称";
     legend.appendChild(c);
   });
   head.appendChild(legend);
@@ -300,6 +396,131 @@ function build() {
 
 let ACTIVE = null;
 
+// 右键胶囊 → 在鼠标位置动画弹出上下文菜单（含「重命名」「清除自定义名」）
+function openChipMenu(ev, s) {
+  closeChipMenu();
+  const menu = document.createElement("div");
+  menu.className = "ctxmenu"; menu.id = "ctxmenu";
+  const hasAlias = !!aliasOf(s.id);
+  const items = [
+    { label: s.hidden ? "👁️ 显示" : "🙈 隐藏",
+      act: () => { const chip = document.querySelector(`.chip[data-sid="${cssEsc(s.id)}"]`); if (chip) toggleSession(s.id, chip); } },
+    { label: "✏️ 重命名", act: () => renameSession(s) },
+  ];
+  if (hasAlias) items.push({ label: "↩️ 恢复自动代号", act: () => { saveLocalAlias(s.id, ""); refreshNames(); if (ACTIVE) drawLink(); showToast("已恢复自动代号"); console.log(renameCmd(s.id, "")); } });
+  menu.innerHTML = `<div class="ctx-head"><span class="emo">${s.emoji}</span>${esc(autoName(s))}</div>`
+    + items.map((it, i) => `<div class="ctx-item" data-i="${i}">${it.label}</div>`).join("");
+  document.body.appendChild(menu);
+  // 先离屏测量，再夹取到视口内，避免贴边溢出
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let x = ev.clientX, y = ev.clientY;
+  if (x + mw + 8 > innerWidth) x = innerWidth - mw - 8;
+  if (y + mh + 8 > innerHeight) y = innerHeight - mh - 8;
+  menu.style.left = x + "px"; menu.style.top = y + "px";
+  menu.style.transformOrigin = `${ev.clientX - x}px ${ev.clientY - y}px`;
+  requestAnimationFrame(() => menu.classList.add("on"));
+  menu.querySelectorAll(".ctx-item").forEach((el) => {
+    el.onclick = () => { const it = items[+el.dataset.i]; closeChipMenu(); it.act(); };
+  });
+}
+function closeChipMenu() {
+  const m = document.getElementById("ctxmenu");
+  if (m) m.remove();
+}
+// 关闭菜单：任意点击 / Esc / 滚动
+document.addEventListener("click", (e) => { if (!e.target.closest(".ctxmenu")) closeChipMenu(); }, true);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeChipMenu(); });
+window.addEventListener("scroll", closeChipMenu, { passive: true });
+
+// 自定义居中模态输入框：背景黑化遮罩 + 磨砂半透明卡片 + 动画展开。
+// 返回 Promise<string|null>：确定 → 输入值（已 trim）；取消 / 关闭 → null。
+function promptModal({ title, desc, value = "", placeholder = "", okText = "确定", cancelText = "取消" }) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal-title">${title}</div>
+        ${desc ? `<div class="modal-desc">${desc}</div>` : ""}
+        <input class="modal-input" type="text" placeholder="${esc(placeholder)}" />
+        <div class="modal-actions">
+          <button class="modal-btn cancel">${esc(cancelText)}</button>
+          <button class="modal-btn ok">${esc(okText)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector(".modal-input");
+    input.value = value;
+    requestAnimationFrame(() => overlay.classList.add("on"));
+    setTimeout(() => { input.focus(); input.select(); }, 60);
+
+    let done = false;
+    const close = (val) => {
+      if (done) return; done = true;
+      overlay.classList.remove("on");
+      document.removeEventListener("keydown", onKey, true);
+      setTimeout(() => overlay.remove(), 260);   // 等退出动画
+      resolve(val);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); close(null); }
+      else if (e.key === "Enter") { e.preventDefault(); close(input.value.trim()); }
+    };
+    document.addEventListener("keydown", onKey, true);
+    overlay.querySelector(".ok").onclick = () => close(input.value.trim());
+    overlay.querySelector(".cancel").onclick = () => close(null);
+    overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) close(null); });
+  });
+}
+
+// 可复制的 --rename 命令（便于永久固化到 aliases.js）
+const renameCmd = (id, alias) => `python3 <skill>/scripts/ai_logger.py --rename "${id}" "${alias}"`;
+
+// 重命名：自定义模态输入 → 写 localStorage 即时生效（跨所有日期同源共享），
+// 并在控制台打印 --rename 命令用于永久固化（换设备/清缓存仍保留）。
+async function renameSession(s) {
+  const cur = aliasOf(s.id) || "";
+  const input = await promptModal({
+    title: "自定义会话名称",
+    desc: `会话 <b>${esc(autoName(s))}</b> · 留空则恢复自动代号`,
+    value: cur,
+    placeholder: "输入易记的名称，如「重构专项」",
+  });
+  if (input === null) return;            // 取消
+  const alias = input.trim();
+  saveLocalAlias(s.id, alias);
+  refreshNames();                        // 即时刷新所有展示位
+  if (ACTIVE) drawLink();
+  console.log(
+    alias
+      ? `已即时生效。如需永久保存（换设备/清缓存后仍在），可运行：\n  ${renameCmd(s.id, alias)}`
+      : `已清除自定义名。永久清除可运行：\n  ${renameCmd(s.id, "")}`
+  );
+  showToast(alias ? `已重命名为「${alias}」（本地即时生效）` : "已恢复自动代号");
+}
+
+// 别名变更后，原地刷新所有「会话名展示位」：胶囊 + 当前详情面板
+function refreshNames() {
+  document.querySelectorAll(".chip").forEach((c) => {
+    const s = META[c.dataset.sid]; if (!s) return;
+    const span = c.querySelector(".chip-name");
+    if (span) span.innerHTML = displayNameHtml(s);
+  });
+  document.querySelectorAll(".d-who").forEach((el) => {
+    const s = META[el.dataset.sid]; if (s) el.innerHTML = displayNameHtml(s);
+  });
+}
+
+// 轻量 toast 提示
+let _toastTimer = null;
+function showToast(msg) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove("on"), 2600);
+}
+
 // 点击胶囊 → 切换该会话；隐藏后压缩其列、整体左移、左栏变窄（日志框随之变宽）
 function toggleSession(id, chip) {
   const s = META[id]; s.hidden = !s.hidden;
@@ -356,20 +577,34 @@ function select(i, node) {
     : "";
 
   // 首框：标题单独拎出置顶（无标题时回退为会话名），其下会话头 + 跨日标注
-  const titleText = e.title ? esc(e.title) : `${esc(s.name)}-${tail}`;
+  const titleText = e.title ? esc(e.title) : autoName(s);
   const headInner =
     `<div class="d-title">${titleText}</div>`
-    + `<div class="d-head"><span class="d-emo">${e.emoji}</span><span class="d-who">${esc(s.name)}-${tail}</span><span class="d-seq">#${e.seq != null ? e.seq : i + 1}</span></div>`
+    + `<div class="d-head"><span class="d-emo">${e.emoji}</span><span class="d-who" data-sid="${esc(s.id)}">${displayNameHtml(s)}</span><span class="d-seq">#${e.seq != null ? e.seq : i + 1}</span></div>`
     + carryNote;
+
+  // token / 轮数卡片（分段增量；transcript 不可用时该字段缺失，整框省略）
+  const u = e.usage;
+  const tokenBox = u
+    ? box("📊 本段消耗", `<div class="metrics">`
+        + f("输入 tokens", fmtTok(u.input))
+        + f("输出 tokens", fmtTok(u.output))
+        + f("缓存读取", fmtTok(u.cache_read))
+        + (u.cache_write ? f("缓存写入", fmtTok(u.cache_write)) : "")
+        + f("对话轮数", u.turns != null ? String(u.turns) : "")
+        + f("API 调用", u.api_calls != null ? String(u.api_calls) : "")
+        + `</div>`, 360)
+    : "";
 
   // 拆成多个磨砂玻璃框，纵向堆叠（首框：标题置顶 + 会话头 + 跨日标注）
   const html =
     box("", headInner, 0)
     + box("📝 日志内容", `<div class="sumbox"><div class="d-sum md">${renderMd(e.summary)}</div></div>`, 120)
     + box("⏱ 时间", `<div class="metrics">${f("时段", `${e.start} → ${e.end}`)}${f("耗时", fmtDur(e.duration))}${f("日期", e.datetime || DATA.date)}</div>`, 240)
-    + box("🌿 Git 分支", e.branch ? `<div class="v mono">${esc(e.branch)}</div>` : `<div class="v" style="color:var(--dim)">（不可用）</div>`, 360)
-    + box("🤖 模型", `<div class="v mono">${esc(e.model) || '<span style="color:var(--dim)">未知</span>'}</div>`, 480)
-    + box("📁 项目 / 目录", `<div class="metrics">${f("项目", e.project)}${f("工作目录", e.cwd, "wide")}</div>`, 600);
+    + tokenBox
+    + box("🌿 Git 分支", e.branch ? `<div class="v mono">${esc(e.branch)}</div>` : `<div class="v" style="color:var(--dim)">（不可用）</div>`, u ? 480 : 360)
+    + box("🤖 模型", `<div class="v mono">${esc(e.model) || '<span style="color:var(--dim)">未知</span>'}</div>`, u ? 600 : 480)
+    + box("📁 项目 / 目录", `<div class="metrics">${f("项目", e.project)}${f("工作目录", e.cwd, "wide")}</div>`, u ? 720 : 600);
 
   document.getElementById("detailwrap").innerHTML = html;
   drawLink();

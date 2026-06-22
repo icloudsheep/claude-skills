@@ -1,6 +1,6 @@
 ---
 name: ai-log
-description: 记录 AI 工作日志。当用户发送「记录日志」「记一下日志」「log 一下」等指令时使用，自动为本次工作拟一个标题（≤30字）并总结上一次记录至今的内容（正文默认 1000 字内），写入按天目录 {保存目录}/{YYYY-MM-DD}/ 下的 data.json 与可视化 index.html。跨午夜接续会自动存入新一天并标注前一部分在上一日。保存目录由配置决定，首次使用会询问用户是否永久指定。
+description: 记录 AI 工作日志。当用户发送「记录日志」「记一下日志」「log 一下」等指令时使用，自动为本次工作拟一个标题（≤30字）并总结上一次记录至今的内容（正文默认 1000 字内），写入按天目录 {保存目录}/{YYYY-MM-DD}/ 下的 data.json 与可视化 index.html。自动统计本段 token 与对话轮数；跨午夜接续会自动存入新一天并标注；网页可右键胶囊给会话自定义名称（跨所有日期生效）。保存目录由配置决定，首次使用会询问用户是否永久指定。
 metadata:
   short-description: 总结近期工作并按天追加写入本地 AI 工作日志
 ---
@@ -79,15 +79,36 @@ python3 <SKILL_DIR>/scripts/ai_logger.py --set-root "/your/chosen/dir" --title "
 
 会话代号无需自己生成：脚本读环境变量 `CLAUDE_CODE_SESSION_ID` 哈希派生「emoji + 动物名 + 后缀」（如 `🦊 Fox-3f2a`），**同一会话恒定、不同会话独立**。时间戳也由脚本算：本次开始时间 = **本会话**上一条的结束时间（无则等于结束时间，因此不同会话区间可重叠），结束时间 = 当前时间。
 
+**token / 轮数自动记录**：脚本据 `CLAUDE_CODE_SESSION_ID` 定位会话 transcript（`~/.claude/projects/*/<id>.jsonl`），统计「本会话上一条记录之后到现在」这一**分段**的 input/output/cache tokens、对话轮数与 API 调用次数，写入条目的 `usage` 字段。无需传参；transcript 不可用时该字段缺失、UI 自动省略。
+
 ### 第 3 步：确认输出
 
 执行完成后**仅输出一句简短确认**（如「✅ 日志已保存」，可附 index.html 路径），禁止输出多余解释。若本次落在临时兜底目录，可顺带提醒一句「本次为临时位置，可随时永久指定」。
 
+## 自定义会话名称（别名）
+
+每个会话的自动代号（如 `Fox-3f2a`）可重命名为易读名称，**跨所有日期对同一会话生效**。所有展示会话名处变为「自定义名 <半透明小字>(自动代号)</半透明小字>」。两层持久化：
+
+- **网页右键胶囊**：在鼠标位置动画弹出菜单（含「重命名」），输入名称 → 写浏览器 `localStorage`，**即时生效、跨所有日期**（`file://` 下各 index.html 同源共享 localStorage）。换浏览器 / 清缓存会丢失。
+- **脚本固化（永久保存）**：写入 `<root>/aliases.json` 并同步刷新 `<root>/aliases.js`，换设备 / 清缓存仍在：
+
+  ```bash
+  python3 <SKILL_DIR>/scripts/ai_logger.py --rename "Fox-3f2a" "重构专项"   # 设别名
+  python3 <SKILL_DIR>/scripts/ai_logger.py --rename "Fox-3f2a" ""           # 清别名
+  ```
+
+> **零重渲染**：数据走外部 JS 资产而非内联——每天页面引用同目录 `./data.js`、所有页面共享引用根部 `../aliases.js`。`file://` 下浏览器允许 `<script src>` 加载本地 js（不受 fetch 的 CORS 限制），故改别名只重写 `aliases.js` 一个文件，所有日期页面刷新即生效，**无需重渲染任何 HTML**。
+> 网页渲染时 **localStorage 软别名优先于 aliases.js 硬别名**。右键改名后控制台会打印对应的 `--rename` 命令，便于一键永久固化。
+> 注意：`index.html` / `data.js` / 根部 `aliases.js` 三者需保持目录结构在一起（单独拷走某个 html 会丢数据）——这是离线零重渲染的合理取舍。
+
 ## 产物（按天目录 `<root>/{YYYY-MM-DD}/`）
 
-- `data.json`：结构化数据真源，脚本读写。每条记录含 `seq`(当天序号)、`title`(标题)、会话代号(`id`/`emoji`/`name`)、`start`/`end`/`duration`、`datetime`、`project`(工作目录名)、`branch`(git 分支)、`model`、`cwd`、`summary` 等字段；跨午夜接续的条目还含 `carryover`(`prev_date`/`prev_end`)。
-- `index.html`：由 `scripts/template.html` 注入数据生成，双击离线打开。明亮多彩流动背景 + 浅色磨砂玻璃前景：
-  - **吸顶头部**：标题 + 会话图例胶囊；点击胶囊可隐藏/显示该会话，隐藏后其泳道列被压缩、整体左移。
+- `data.json`：结构化数据真源，脚本读写。每条记录含 `seq`(当天序号)、`title`(标题)、会话代号(`id`/`emoji`/`name`)、`start`/`end`/`duration`、`datetime`、`project`(工作目录名)、`branch`(git 分支)、`model`、`cwd`、`summary` 等字段；跨午夜接续的条目还含 `carryover`(`prev_date`/`prev_end`)；含 transcript 数据时还含 `usage`(`input`/`output`/`cache_read`/`cache_write`/`turns`/`api_calls`)。
+- `data.js`：当天数据的 JS 资产（`window.AILOG_DATA = {...}`），由 data.json 生成，供 index.html 以 `<script src>` 加载。
+- `index.html`：纯静态模板，运行时读取 `./data.js` 与 `../aliases.js` 渲染，双击离线打开。明亮多彩流动背景 + 浅色磨砂玻璃前景：
+  - **吸顶头部**：标题 + 会话图例胶囊；**左键**切换该会话显隐、**右键**在鼠标位置弹出菜单自定义名称（有别名时显示「自定义名(自动代号)」，括号内为半透明小字）。
   - **左侧泳道**（独立滚动）：每会话一列、每条日志一行，节点 = emoji + 当天序号，同列竖线连接同一会话；不同会话区间可重叠。跨午夜接续的节点左上角带 🌙 角标。
-  - **右侧详情**：点击节点后纵向堆叠多个磨砂玻璃框；首框顶部单独展示该条**标题**，其下为会话头与跨日标注（若有）；其余框为日志内容(支持 markdown) / 时间 / Git 分支 / 模型 / 项目目录，单次只展示一条；节点与详情间有低透明度静态虚线连接。
+  - **右侧详情**：点击节点后纵向堆叠多个磨砂玻璃框；首框顶部单独展示该条**标题**，其下为会话头与跨日标注（若有）；其余框为日志内容(支持 markdown) / 时间 / **本段消耗(token/轮数)** / Git 分支 / 模型 / 项目目录，单次只展示一条；节点与详情间有低透明度静态虚线连接。
   - 页脚磨砂玻璃，标注当天时间跨度与总时长。
+
+另有 `<root>/aliases.js`（root 根目录，所有日期共享）：`window.AILOG_ALIASES = {...}` 会话别名资产，由 `--rename` / 右键固化维护；其人读真源为同目录 `aliases.json`。
