@@ -9,7 +9,7 @@
 | [`code-comment`](skills/code-comment) | 代码注释规范：注释权责对齐当前作用域，不向上溯源调用链、不向下探索消费方、阶段性现状带时间戳、不写行号、不脑补业务 | 写 / 改任何代码注释（javadoc、行内、字段、测试注释）前 |
 | [`code-review`](skills/code-review) | 提交前代码审查：按本次 diff 逐项查拼写、log 合理性（B 端关键节点合理打 / C 端校验失败不打）、注释、commit message、参数校验与边界；下游调 `code-comment`，可被 `git-commit` 触发 | 提交代码前 / 写 commit / push 前 |
 | [`git-commit`](skills/git-commit) | Git 提交规范：基于 Conventional Commits，覆盖 type 选择、subject/body/footer 写法、`-F` 文件提交、精确暂存、amend 与强推安全、分支命名 | 写 commit message / 建分支 / push 前 |
-| [`ai-log`](skills/ai-log) | 记录 AI 工作日志：总结上次记录至今的工作内容，写入按天目录的 `data.json` 与可视化 `index.html`；保存目录由配置决定，首次使用询问是否永久指定 | 收到「记录日志」「log 一下」类指令时 |
+| [`ai-log`](skills/ai-log) | 记录 AI 工作日志并生成可视化时间线：总结上次记录至今的工作写入按天 `data.json` 与离线 `index.html`；支持 markdown / mermaid、自动统计 token 与轮数、跨午夜接续、会话自定义名、六套主题、关于弹窗与在线更新检查；另有按主题 / 按轮次回溯整段对话的 full 模式 | 收到「记录日志」「log 一下」类指令，或 `/ai-log full` 时 |
 
 ## Skills 协作关系
 
@@ -37,7 +37,7 @@ skills/
 ├── ai-log/
 │   ├── SKILL.md
 │   ├── README.md
-│   ├── version.json
+│   ├── version.js            # 版本信息（git 受控真源；日志目录软链指向它）
 │   └── scripts/
 │       ├── ai_logger.py      # 日志写入脚本
 │       ├── template.html     # 可视化时间线模板

@@ -346,6 +346,11 @@
   /* 跨午夜接续：节点左上角月亮角标 */
   #stage .node .moon { position: absolute; left: -7px; top: -7px; font-size: 12px; line-height: 1;
     filter: drop-shadow(0 1px 3px rgba(40,40,90,.5)); }
+  /* full 模式（按主题总结）：节点左上角小火箭角标 */
+  #stage .node .rocket { position: absolute; left: -7px; top: -7px; font-size: 12px; line-height: 1;
+    filter: drop-shadow(0 1px 3px rgba(40,40,90,.5)); }
+  /* 月亮与火箭同时存在时，火箭下移避让 */
+  #stage .node .moon + .rocket { top: 8px; }
   #stage .node:hover .knob { transform: scale(1.16); }
   #stage .node.active .knob { transform: scale(1.22); box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 30%, transparent), 0 0 20px var(--c); }
 
@@ -684,7 +689,8 @@ function build() {
     n.className = "node"; n.style.left = laneX(s.lane) + "px"; n.style.top = y + "px";
     n.style.setProperty("--c", s.color); n.style.animationDelay = (500 + i * 110) + "ms";
     const moon = e.carryover ? `<span class="moon" title="接续自 ${esc(e.carryover.prev_date)}">🌙</span>` : "";
-    n.innerHTML = `<div class="knob">${e.emoji}<span class="num">${e.seq != null ? e.seq : i + 1}</span>${moon}</div>`;
+    const rocket = e.mode === "full" ? `<span class="rocket" title="按主题总结（full 模式）">🚀</span>` : "";
+    n.innerHTML = `<div class="knob">${e.emoji}<span class="num">${e.seq != null ? e.seq : i + 1}</span>${moon}${rocket}</div>`;
     n.dataset.i = i; n.dataset.sid = e.id;  // 会话 ID 用于 toggle
     n.onclick = () => select(i, n);
     stage.appendChild(n);
@@ -1244,12 +1250,19 @@ function renderFooter() {
     fo.innerHTML = `<div class="f-row">AI 工作日志</div>${verLine}${repoLine}${copyLine}`;
     return;
   }
-  const first = ENTRIES[0].start, last = ENTRIES[ENTRIES.length - 1].end;
-  const toS = (t) => t.split(":").reduce((a, x) => a * 60 + +x, 0);
+  const firstE = ENTRIES[0], lastE = ENTRIES[ENTRIES.length - 1];
+  const first = firstE.start, last = lastE.end;
+  // 首条若为跨午夜接续，其 start 属于前一天；据此取正确日期，避免跨度显示出现 end 早于 start
+  const firstDate = firstE.carryover ? firstE.carryover.prev_date : DATA.date;
+  // 总时长 = 显示的跨度两端（带日期）之真实日历差，与上方跨度一致；
+  // 不累加各条 duration（多会话区间重叠会重复计、跨午夜条目 duration 巨大会污染）
+  const toMs = (date, time) => Date.parse(`${date}T${time}`);
+  const span = toMs(firstDate, first), end = toMs(DATA.date, last);
+  const totalSec = (isFinite(span) && isFinite(end) && end >= span) ? Math.round((end - span) / 1000) : 0;
   fo.innerHTML =
     `<div class="f-row">AI 工作日志 · 点击节点看详情 · 点击胶囊切换会话</div>`
-    + `<div class="f-row">跨度 <span class="span">${fmtAt(first, DATA.date)} → ${fmtAt(last, DATA.date)}</span></div>`
-    + `<div class="f-row">共 <span class="span">${fmtDur(toS(last) - toS(first))}</span> · ${ENTRIES.length} 条</div>`
+    + `<div class="f-row">跨度 <span class="span">${fmtAt(first, firstDate)} → ${fmtAt(last, DATA.date)}</span></div>`
+    + `<div class="f-row">共 <span class="span">${fmtDur(totalSec)}</span> · ${ENTRIES.length} 条</div>`
     + verLine + repoLine + copyLine;
 }
 

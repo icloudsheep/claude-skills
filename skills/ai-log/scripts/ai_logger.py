@@ -483,7 +483,7 @@ def load_version():
     return fallback
 
 
-def write_entry(root, summary, title, id_override):
+def write_entry(root, summary, title, id_override, mode=None):
     """把一条日志写入 <root>/{date}/ 下的 data.json，并刷新 index.html。
 
     返回 (会话代号字典, 会话 id, index.html 路径)，供调用方回显。
@@ -540,6 +540,8 @@ def write_entry(root, summary, title, id_override):
     }
     if carryover:
         entry["carryover"] = carryover  # 标注：本会话前一部分在 prev_date
+    if mode:
+        entry["mode"] = mode  # 记录模式，如 "full"（按主题总结），供 UI 加角标区分
 
     # 分段 token / 轮数：统计「本会话上一条记录之后」到现在的 transcript 增量
     prev_dt = _prev_entry_datetime(day["entries"], codename_id, root, date_str)
@@ -561,6 +563,8 @@ def main():
     parser.add_argument("--title", default=None,
                         help="本条日志标题（建议 ≤30 字），在网页详情面板顶部单独展示")
     parser.add_argument("--id", default=None, help="可选，手动覆盖会话代号 name")
+    parser.add_argument("--mode", default=None, choices=["full"],
+                        help="记录模式：full=按主题总结的条目（时间线节点加 🚀 角标）")
     parser.add_argument("--root", default=None, help="本次保存目录（仅当次生效，不落盘）")
     parser.add_argument("--set-root", default=None, dest="set_root",
                         help="永久指定保存目录，写入 ~/.config/ai-log/config.json")
@@ -608,7 +612,7 @@ def main():
 
     # 解析本次保存目录：--root / --set-root > config > cache 兜底
     root, source = resolve_root(args.root or chosen_root)
-    cn, codename_id, html_path = write_entry(root, args.summary, args.title, args.id)
+    cn, codename_id, html_path = write_entry(root, args.summary, args.title, args.id, args.mode)
 
     print(f"✅ 日志已保存（{cn['emoji']} {codename_id}）-> {html_path}")
     if source == "cache":
