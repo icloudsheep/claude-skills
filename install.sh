@@ -15,10 +15,12 @@ mkdir -p "$DEST"
 for skill in "$SRC"/*/; do
   name="$(basename "$skill")"
   target="$DEST/$name"
-  if [ -e "$target" ] || [ -L "$target" ]; then
-    echo "跳过 ${name}：${target} 已存在"
+  if [ -e "$target" ] && [ ! -L "$target" ]; then
+    # 目标是真实文件/目录（非软链），强制覆盖会丢数据，跳过并警告
+    echo "跳过 ${name}：${target} 是真实文件/目录（非软链），未覆盖"
   else
-    ln -s "$skill" "$target"
+    # 不存在或已是软链：强制（重新）创建，-f 覆盖旧链、-n 不跟进目录软链避免链到链内部
+    ln -sfn "$skill" "$target"
     echo "已链接 $name -> $target"
   fi
 done
