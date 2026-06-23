@@ -57,12 +57,13 @@ DATE_FMT = "%Y-%m-%d"
 TIME_FMT = "%H:%M:%S"
 # 模板与脚本同目录，随仓库一起分发，不依赖任何外部固定路径
 TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.html")
-# mermaid 库本地副本（随 skill 分发）：渲染时拷到 root 根，所有日期页面共享引用
-# ../mermaid.min.js，离线断网也能画图；缺失时模板回退 CDN。
+# mermaid 库本地副本（随 skill 分发）：渲染时在 root 根建软链 ../mermaid.min.js 指向它，
+# git 更新 skill 后软链目标内容随之更新，页面刷新即生效，无需重渲染。缺失时模板回退 CDN。
 MERMAID_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mermaid.min.js")
-# 版本信息文件（随 skill 分发，亦为 GitHub 上被检索比对的真源）：渲染时写成
-# root 根 version.js，页面共享引用 ../version.js 用于显示版本与远程更新检查。
-VERSION_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "version.json")
+# 版本信息文件：现为 git 受控的 version.js（window.AILOG_VERSION=...），是版本真源。
+# root 根的 version.js 建软链指向它——git pull 更新 skill 后，所有日期页面刷新即读到新版本，
+# 无需重跑脚本或重渲染。页面共享引用 ../version.js。
+VERSION_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "version.js")
 # 数据以独立 JS 资产加载（file:// 下 <script src> 经典脚本不受 CORS 限制）：
 # 当天数据 → 同目录 data.js；会话别名 → root 根 aliases.js（所有日期页面共享引用 ../aliases.js）。
 # 故改别名只需重写一个 aliases.js，所有 index.html 刷新即生效，无需重渲染。
@@ -429,43 +430,57 @@ def render_html(day, html_path, root=None):
     # 3) 全局别名资产 aliases.js（root 根，所有日期共享 ../aliases.js）
     if root is not None:
         write_aliases_js(root)
-        ensure_mermaid(root)
-        write_version_js(root)
+        link_skill_assets(root)
     return True
 
 
+def _symlink_force(src, dst):
+    """在 dst 建/更新指向 src 的软链；src 不存在则跳过。已是正确软链则不动。"""
+    if not os.path.exists(src):
+        return
+    try:
+        if os.path.islink(dst):
+            if os.path.realpath(dst) == os.path.realpath(src):
+                return  # 已正确指向，无需重建
+            os.unlink(dst)
+        elif os.path.exists(dst):
+            os.remove(dst)  # 旧的实体文件（历史拷贝），替换为软链
+        os.symlink(src, dst)
+    except OSError:
+        # 软链失败（如不支持的文件系统）兜底为拷贝
+        try:
+            import shutil
+            shutil.copyfile(src, dst)
+        except OSError:
+            pass
+
+
+def link_skill_assets(root):
+    """把 skill 中 git 受控的 version.js / mermaid.min.js 在 root 根建软链。
+
+    这样 git pull 更新 skill 后，软链目标内容随之更新，所有日期页面刷新即生效，
+    无需重跑脚本或重渲染（版本号、mermaid 库都跟着 git 走）。
+    """
+    _symlink_force(VERSION_SRC, os.path.join(root, "version.js"))
+    _symlink_force(MERMAID_SRC, os.path.join(root, "mermaid.min.js"))
+
+
 def load_version():
-    """读 skill 的 version.json；缺失/损坏返回保底字典。"""
+    """读 skill 的 version.js，解析出 window.AILOG_VERSION 的 JSON 部分（供脚本回显）。"""
     fallback = {"version": "unknown", "repo": "", "check_url": ""}
     if not os.path.exists(VERSION_SRC):
         return fallback
     try:
         with open(VERSION_SRC, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            txt = f.read()
+        # 取首个 { 到末个 } 之间的 JSON 对象
+        a, b = txt.find("{"), txt.rfind("}")
+        if a >= 0 and b > a:
+            data = json.loads(txt[a:b + 1])
             return data if isinstance(data, dict) else fallback
     except (json.JSONDecodeError, OSError):
         return fallback
-
-
-def write_version_js(root):
-    """把版本信息写成 root 根 version.js（window.AILOG_VERSION=...），供页面共享引用。"""
-    payload = json.dumps(load_version(), ensure_ascii=False)
-    with open(os.path.join(root, "version.js"), "w", encoding="utf-8") as f:
-        f.write(f"{VERSION_JS_GLOBAL} = {payload};\n")
-
-
-def ensure_mermaid(root):
-    """把本地 mermaid 库副本放到 root 根（缺失或体积不符才拷），供 ../mermaid.min.js 引用。"""
-    if not os.path.exists(MERMAID_SRC):
-        return
-    dst = os.path.join(root, "mermaid.min.js")
-    try:
-        if os.path.exists(dst) and os.path.getsize(dst) == os.path.getsize(MERMAID_SRC):
-            return  # 已是同一份，免重复拷贝
-        import shutil
-        shutil.copyfile(MERMAID_SRC, dst)
-    except OSError:
-        pass
+    return fallback
 
 
 def write_entry(root, summary, title, id_override):
