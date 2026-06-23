@@ -60,11 +60,15 @@ TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.ht
 # mermaid 库本地副本（随 skill 分发）：渲染时拷到 root 根，所有日期页面共享引用
 # ../mermaid.min.js，离线断网也能画图；缺失时模板回退 CDN。
 MERMAID_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mermaid.min.js")
+# 版本信息文件（随 skill 分发，亦为 GitHub 上被检索比对的真源）：渲染时写成
+# root 根 version.js，页面共享引用 ../version.js 用于显示版本与远程更新检查。
+VERSION_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "version.json")
 # 数据以独立 JS 资产加载（file:// 下 <script src> 经典脚本不受 CORS 限制）：
 # 当天数据 → 同目录 data.js；会话别名 → root 根 aliases.js（所有日期页面共享引用 ../aliases.js）。
 # 故改别名只需重写一个 aliases.js，所有 index.html 刷新即生效，无需重渲染。
 DATA_JS_GLOBAL = "window.AILOG_DATA"
 ALIASES_JS_GLOBAL = "window.AILOG_ALIASES"
+VERSION_JS_GLOBAL = "window.AILOG_VERSION"
 # Claude Code 会话 transcript 根目录（每会话一个 <session-id>.jsonl）
 PROJECTS_DIR = os.path.expanduser("~/.claude/projects")
 
@@ -426,7 +430,28 @@ def render_html(day, html_path, root=None):
     if root is not None:
         write_aliases_js(root)
         ensure_mermaid(root)
+        write_version_js(root)
     return True
+
+
+def load_version():
+    """读 skill 的 version.json；缺失/损坏返回保底字典。"""
+    fallback = {"version": "unknown", "repo": "", "check_url": ""}
+    if not os.path.exists(VERSION_SRC):
+        return fallback
+    try:
+        with open(VERSION_SRC, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, dict) else fallback
+    except (json.JSONDecodeError, OSError):
+        return fallback
+
+
+def write_version_js(root):
+    """把版本信息写成 root 根 version.js（window.AILOG_VERSION=...），供页面共享引用。"""
+    payload = json.dumps(load_version(), ensure_ascii=False)
+    with open(os.path.join(root, "version.js"), "w", encoding="utf-8") as f:
+        f.write(f"{VERSION_JS_GLOBAL} = {payload};\n")
 
 
 def ensure_mermaid(root):
