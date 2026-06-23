@@ -22,6 +22,7 @@
 
 1. **查状态 / 按需询问**：`ai_logger.py --status`，未永久指定时询问用户。
 2. **拟标题 + 总结**：先拟一句标题（≤25 字），再概述上次记录至今的工作（正文默认 2000 字内，正文不写一级大标题、只用小标题与列表；鼓励用 markdown 与 mermaid 图）。
+   - **复用同仓库其他 skill 的产物**：本段若用过 `git-commit` / `code-review` / `code-comment`，优先把现成的 commit message、审查发现、注释结论提炼进正文，而非从零归纳。仅**读取本会话已有结论 / 已存在的 commit message** 属轻量引用可直接用；若要**主动触发**另一个 skill 现做，须先征得用户同意。
 3. **写入**：调用 `ai_logger.py --title "<标题>" --summary "<总结>"`，summary 用单引号 heredoc 传参避免 shell 篡改；用户选择永久指定时用 `--set-root <目录> --title ... --summary ...` 一步到位。
 4. **确认**：仅输出一句确认。
 

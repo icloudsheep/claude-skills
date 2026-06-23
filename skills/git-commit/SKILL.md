@@ -195,6 +195,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 > 注：commit message 正文可以适度描述链路与取舍（这是"为什么"的一部分）；
 > 但落到**代码注释**时须遵循 `code-comment` skill，收敛到当前作用域、不向上下游探索。
 
+> **提交前建议先过 `code-review`**：本仓库的 `code-review` skill 覆盖提交前的拼写 / log 合理性 / 注释 / 参数边界等通用审查，提交前跑一轮能拦下多数低级问题。
+> **跨 skill 调用需先征得用户同意**：若要在提交流程中主动触发 `code-review`（或其他 skill），先向用户说明要调用什么、做什么，获许可后再执行。
+
 ---
 
 ## 九、快速检查清单

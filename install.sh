@@ -16,7 +16,7 @@ for skill in "$SRC"/*/; do
   name="$(basename "$skill")"
   target="$DEST/$name"
   if [ -e "$target" ] || [ -L "$target" ]; then
-    echo "跳过 $name：$target 已存在"
+    echo "跳过 ${name}：${target} 已存在"
   else
     ln -s "$skill" "$target"
     echo "已链接 $name -> $target"
