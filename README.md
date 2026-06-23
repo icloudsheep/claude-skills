@@ -96,3 +96,7 @@ ln -s "$PWD/skills/ai-log"       ~/.claude/skills/ai-log
 ## 许可证
 
 [MIT](LICENSE)
+
+## 参考与致谢
+
+开发、运行与宣传中参考或依赖的工具、库、平台与资源见 [CREDITS.md](CREDITS.md)。
