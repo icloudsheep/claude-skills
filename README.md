@@ -1,5 +1,7 @@
 # claude-skills
 
+![claude-skills banner](static/banner.svg)
+
 一组可直接复用的 [Claude Code](https://docs.claude.com/en/docs/claude-code) / Agent Skills，沉淀日常开发中的工程规范与自动化能力。每个 skill 都是一个自包含目录，含 `SKILL.md`（带 YAML frontmatter）及其依赖资源，按需自动触发，不常驻占用上下文。
 
 ## 包含的 Skills
@@ -11,7 +13,22 @@
 | [`git-commit`](skills/git-commit) | Git 提交规范：基于 Conventional Commits，覆盖 type 选择、subject/body/footer 写法、`-F` 文件提交、精确暂存、amend 与强推安全、分支命名 | 写 commit message / 建分支 / push 前 |
 | [`ai-log`](skills/ai-log) | 记录 AI 工作日志并生成可视化时间线：总结上次记录至今的工作写入按天 `data.json` 与离线 `index.html`；支持 markdown / mermaid、自动统计 token 与轮数、跨午夜接续、会话自定义名、六套主题、关于弹窗与在线更新检查；另有按主题 / 按轮次回溯整段对话的 full 模式 | 收到「记录日志」「log 一下」类指令，或 `/ai-log full` 时 |
 
+## 新功能
+
+![ai-log 功能展示](static/ai-log-showcase.svg)
+
+`ai-log` 近期一轮增强（详见 [skills/ai-log](skills/ai-log)）：
+
+- **LaTeX 公式**：日志正文支持 `$行内$` 与 `$$块级$$` 公式，内置 KaTeX 本地副本，离线可用、加载失败回退 CDN。
+- **条目编辑 / 删除 / 预览**：详情面板与节点右键菜单可编辑（Markdown 源码框）、删除、预览任意一条；改动即时写 `localStorage`、控制台同时打印永久落盘命令（脚本侧 `--edit` / `--delete` / `--rerender`）。编辑为原地更新、删除为节点平滑移除，不再整页重建。
+- **节点悬停气泡**：鼠标停留即显示该条标题，快速浏览时间线。
+- **渲染稳定性**：修复 mermaid 偶发渲染失败、玻璃主题连接线刷新、模态打开时吸顶头部消失、暗色编辑框可读性等问题。
+
+> 工程结构上，`ai-log` 的脚本与模板也做了模块化重构：`ai_logger.py` 拆为 `ailog/` 包，`template.html` 由 `src/` 各部件经构建脚本拼装（见下文目录结构）。
+
 ## Skills 协作关系
+
+![skills 协作流水线](static/workflow.svg)
 
 这四个 skill 不是孤立的，围绕「写代码 → 审查 → 提交 → 记录」一条链路彼此衔接：
 
@@ -37,11 +54,15 @@ skills/
 ├── ai-log/
 │   ├── SKILL.md
 │   ├── README.md
-│   ├── version.js            # 版本信息（git 受控真源；日志目录软链指向它）
+│   ├── version.js                # 版本信息（git 受控真源；日志目录软链指向它）
 │   └── scripts/
-│       ├── ai_logger.py      # 日志写入脚本
-│       ├── template.html     # 可视化时间线模板
-│       └── mermaid.min.js    # 本地 mermaid 渲染库（离线可用）
+│       ├── ai_logger.py          # 命令入口（薄封装，委托 ailog 包）
+│       ├── ailog/                # 日志逻辑包：config/session/store/transcript/render/entry/cli
+│       ├── template.html         # 可视化时间线模板（构建产物，由 src/ 拼装）
+│       ├── src/                  # 模板源码部件：css/* + js/* + shell_*.html
+│       ├── build/                # 构建脚本：build_template.py（拼装）/ check_template.py（校验）
+│       ├── mermaid.min.js        # 本地 mermaid 渲染库（离线可用）
+│       └── katex/                # 本地 KaTeX 公式库（katex.min.js/css + woff2 字体，离线可用）
 ├── code-comment/
 │   ├── SKILL.md
 │   └── README.md
@@ -54,8 +75,11 @@ skills/
 ```
 
 > 每个 skill 目录均含 `SKILL.md`（规范正文，带 YAML frontmatter，运行时加载）与 `README.md`（仓库浏览用的人读说明）。
+> `ai-log` 的 `template.html` 是构建产物——改前端样式 / 逻辑请改 `scripts/src/` 下对应部件，再运行 `scripts/build/build_template.py` 重新拼装。
 
 ## 安装
+
+![安装示意](static/install.svg)
 
 将 skill 目录放到 Claude Code 能发现的位置即可：
 
@@ -80,7 +104,7 @@ ln -s "$PWD/skills/ai-log"       ~/.claude/skills/ai-log
 
 ### ai-log 的保存目录
 
-`ai-log` 的脚本与模板（`ai_logger.py`、`template.html`）放在 `skills/ai-log/scripts/` 下，脚本按自身位置定位模板，无需复制到任何固定路径。
+`ai-log` 的脚本与模板放在 `skills/ai-log/scripts/` 下（命令入口 `ai_logger.py` + `ailog/` 逻辑包 + `template.html` 模板及其离线资产），脚本按自身位置定位模板，无需复制到任何固定路径。
 
 日志保存目录由配置决定，不写死：
 
