@@ -60,6 +60,9 @@ TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.ht
 # mermaid 库本地副本（随 skill 分发）：渲染时在 root 根建软链 ../mermaid.min.js 指向它，
 # git 更新 skill 后软链目标内容随之更新，页面刷新即生效，无需重渲染。缺失时模板回退 CDN。
 MERMAID_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mermaid.min.js")
+# KaTeX 公式库本地副本目录（随 skill 分发，含 katex.min.js / katex.min.css / fonts/*.woff2）：
+# 渲染时在 root 根建软链 ../katex 指向它，离线可用；缺失时模板回退 CDN。
+KATEX_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "katex")
 # 版本信息文件：现为 git 受控的 version.js（window.AILOG_VERSION=...），是版本真源。
 # root 根的 version.js 建软链指向它——git pull 更新 skill 后，所有日期页面刷新即读到新版本，
 # 无需重跑脚本或重渲染。页面共享引用 ../version.js。
@@ -328,6 +331,56 @@ def save_alias(root, codename_id, alias):
     write_aliases_js(root)
 
 
+def edit_entry(root, date_str, seq, new_title, new_summary):
+    """永久编辑某条日志的标题/正文：改写 <root>/{date}/data.json 并重渲染该日 HTML。
+
+    按 (date, seq) 定位条目（seq 为当天写入时固定的全局序号，稳定可用）。
+    new_title / new_summary 为 None 时表示该字段不变；返回 True 表示命中并已写回。
+    """
+    data_path = os.path.join(root, date_str, "data.json")
+    if not os.path.exists(data_path):
+        return False
+    with open(data_path, "r", encoding="utf-8") as f:
+        day = json.load(f)
+    hit = None
+    for e in day.get("entries", []):
+        if e.get("seq") == seq:
+            hit = e
+            break
+    if hit is None:
+        return False
+    if new_title is not None:
+        hit["title"] = new_title.strip()
+    if new_summary is not None:
+        hit["summary"] = new_summary.strip()
+    with open(data_path, "w", encoding="utf-8") as f:
+        json.dump(day, f, ensure_ascii=False, indent=2)
+    render_html(day, os.path.join(root, date_str, "index.html"), root)
+    return True
+
+
+def delete_entry(root, date_str, seq):
+    """永久删除某条日志：从 <root>/{date}/data.json 移除该 seq 条目并重渲染该日 HTML。
+
+    保留其余条目的原 seq 不变（避免打乱 carryover / 本地覆盖层等按 seq 的定位）。
+    返回 True 表示命中并已删除。
+    """
+    data_path = os.path.join(root, date_str, "data.json")
+    if not os.path.exists(data_path):
+        return False
+    with open(data_path, "r", encoding="utf-8") as f:
+        day = json.load(f)
+    entries = day.get("entries", [])
+    kept = [e for e in entries if e.get("seq") != seq]
+    if len(kept) == len(entries):
+        return False
+    day["entries"] = kept
+    with open(data_path, "w", encoding="utf-8") as f:
+        json.dump(day, f, ensure_ascii=False, indent=2)
+    render_html(day, os.path.join(root, date_str, "index.html"), root)
+    return True
+
+
 def rerender_all_days(root):
     """重写 root 下所有日期目录的 data.js 与 index.html（模板升级时用）。
 
@@ -463,6 +516,7 @@ def link_skill_assets(root):
     """
     _symlink_force(VERSION_SRC, os.path.join(root, "version.js"))
     _symlink_force(MERMAID_SRC, os.path.join(root, "mermaid.min.js"))
+    _symlink_force(KATEX_SRC, os.path.join(root, "katex"))
 
 
 def load_version():
@@ -574,6 +628,15 @@ def main():
                         default=None,
                         help="把会话 ID（如 Fox-3f2a）永久重命名为自定义名，写入"
                              " <root>/aliases.json 并重渲染所有日期 HTML；传空名清除别名")
+    parser.add_argument("--edit", nargs=2, metavar=("日期", "序号"), default=None,
+                        help="永久编辑某条日志：定位 <root>/{日期}/data.json 中 seq=序号 的条目，"
+                             "配合 --title / --summary 改写标题或正文后重渲染该日 HTML")
+    parser.add_argument("--delete", nargs=2, metavar=("日期", "序号"), default=None,
+                        help="永久删除某条日志：从 <root>/{日期}/data.json 移除 seq=序号 的条目"
+                             "并重渲染该日 HTML（其余条目 seq 不变）")
+    parser.add_argument("--rerender", action="store_true",
+                        help="把当前模板重新铺到 <root> 下所有日期的 index.html（模板升级后用），"
+                             "并刷新 version.js / mermaid / katex 软链；不改 data.json")
     args = parser.parse_args()
 
     # --status：仅报告，不写日志。供调用方判断是否需要询问用户永久位置。
@@ -594,6 +657,48 @@ def main():
         save_alias(root, cid, alias)
         verb = f"重命名为「{alias}」" if alias else "清除别名"
         print(f"🏷️ 会话 {cid} 已{verb} -> {aliases_js_path(root)}（刷新页面即生效）")
+        return
+
+    # --edit：永久改写某条日志的标题/正文（按 date + seq 定位），重渲染该日 HTML。
+    if args.edit is not None:
+        root, _src = resolve_root(args.root)
+        date_str, seq_raw = args.edit[0].strip(), args.edit[1].strip()
+        try:
+            seq = int(seq_raw)
+        except ValueError:
+            parser.error(f"--edit 序号须为整数，收到：{seq_raw}")
+        if args.title is None and args.summary is None:
+            parser.error("--edit 需配合 --title 或 --summary 指定要改写的内容")
+        ok = edit_entry(root, date_str, seq, args.title, args.summary)
+        if ok:
+            print(f"✏️ 已编辑 {date_str} #{seq} -> {os.path.join(root, date_str, 'index.html')}（刷新页面即生效）")
+        else:
+            print(f"⚠️ 未找到 {date_str} #{seq} 对应的日志条目", file=sys.stderr)
+            sys.exit(1)
+        return
+
+    # --delete：永久删除某条日志（按 date + seq 定位），重渲染该日 HTML。
+    if args.delete is not None:
+        root, _src = resolve_root(args.root)
+        date_str, seq_raw = args.delete[0].strip(), args.delete[1].strip()
+        try:
+            seq = int(seq_raw)
+        except ValueError:
+            parser.error(f"--delete 序号须为整数，收到：{seq_raw}")
+        ok = delete_entry(root, date_str, seq)
+        if ok:
+            print(f"🗑️ 已删除 {date_str} #{seq} -> {os.path.join(root, date_str, 'index.html')}（刷新页面即生效）")
+        else:
+            print(f"⚠️ 未找到 {date_str} #{seq} 对应的日志条目", file=sys.stderr)
+            sys.exit(1)
+        return
+
+    # --rerender：模板升级后，把新模板铺到所有历史日期页面，并刷新 root 根软链（含 katex）。
+    if args.rerender:
+        root, _src = resolve_root(args.root)
+        link_skill_assets(root)   # 即便没有任何日期目录，也先建好 version/mermaid/katex 软链
+        n = rerender_all_days(root)
+        print(f"♻️ 已用当前模板重渲染 {n} 个日期页面 -> {root}（刷新页面即生效）")
         return
 
     # --set-root：把永久目录写入配置；后续若带 --summary 则用该目录立即记一条。

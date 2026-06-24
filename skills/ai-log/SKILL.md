@@ -162,6 +162,25 @@ python3 <SKILL_DIR>/scripts/ai_logger.py --mode full --title "主题二标题" -
 > 网页渲染时 **localStorage 软别名优先于 aliases.js 硬别名**。右键改名后控制台会打印对应的 `--rename` 命令，便于一键永久固化。
 > 注意：`index.html` / `data.js` / 根部 `aliases.js` 三者需保持目录结构在一起（单独拷走某个 html 会丢数据）——这是离线零重渲染的合理取舍。
 
+## 编辑 / 删除日志条目
+
+每条日志详情面板右上角有 **✏️ 编辑** 与 **🗑️ 删除** 按钮，两层持久化（与别名同理）：
+
+- **网页操作（即时、本地）**：
+  - 编辑：弹出源码编辑框，标题为单行文本、**正文为 Markdown 源码多行框**（⌘/Ctrl+Enter 保存），支持 mermaid 代码块与 `$LaTeX$` 公式。
+  - 删除：二次确认后即时隐藏该条。
+  - 改动写入浏览器 `localStorage`（键 `ai-log:edits`，按 `日期#seq` 定位），**跨同源所有日期、刷新即生效**；换浏览器 / 清缓存会丢失（删除可借此恢复）。
+- **脚本固化（永久写回 data.json）**：网页操作后控制台会打印对应命令，运行即把改动落盘并重渲染该日 HTML：
+
+  ```bash
+  # 编辑某条（按 日期 + seq 定位；--title / --summary 至少给一个）
+  python3 <SKILL_DIR>/scripts/ai_logger.py --edit "2026-06-24" 3 --title "新标题" --summary "$SUMMARY"
+  # 删除某条（其余条目 seq 保持不变，避免打乱定位）
+  python3 <SKILL_DIR>/scripts/ai_logger.py --delete "2026-06-24" 3
+  ```
+
+> 网页渲染时 **localStorage 覆盖层优先于 data.json**：未落盘的本地改动始终生效；一旦运行落盘命令、data.json 已是最新，覆盖层与之一致即无差异。
+
 ## 产物（按天目录 `<root>/{YYYY-MM-DD}/`）
 
 - `data.json`：结构化数据真源，脚本读写。每条记录含 `seq`(当天序号)、`title`(标题)、会话代号(`id`/`emoji`/`name`)、`start`/`end`/`duration`、`datetime`、`project`(工作目录名)、`branch`(git 分支)、`model`、`cwd`、`summary` 等字段；跨午夜接续的条目还含 `carryover`(`prev_date`/`prev_end`)；含 transcript 数据时还含 `usage`(`input`/`output`/`cache_read`/`cache_write`/`turns`/`api_calls`)。
@@ -169,7 +188,9 @@ python3 <SKILL_DIR>/scripts/ai_logger.py --mode full --title "主题二标题" -
 - `index.html`：纯静态模板，运行时读取 `./data.js` 与 `../aliases.js` 渲染，双击离线打开。明亮多彩流动背景 + 浅色磨砂玻璃前景：
   - **吸顶头部**：标题 + 会话图例胶囊；**左键**切换该会话显隐、**右键**在鼠标位置弹出菜单自定义名称（有别名时显示「自定义名(自动代号)」，括号内为半透明小字）。
   - **左侧泳道**（独立滚动）：每会话一列、每条日志一行，节点 = emoji + 当天序号，同列竖线连接同一会话；不同会话区间可重叠。跨午夜接续的节点左上角带 🌙 角标。
-  - **右侧详情**：点击节点后纵向堆叠多个磨砂玻璃框；首框顶部单独展示该条**标题**，其下为会话头与跨日标注（若有）；其余框为日志内容(支持 markdown) / 时间 / **本段消耗(token/轮数)** / Git 分支 / 模型 / 项目目录，单次只展示一条；节点与详情间有低透明度静态虚线连接。
+  - **右侧详情**：点击节点后纵向堆叠多个磨砂玻璃框；首框顶部单独展示该条**标题**（右上角有编辑/删除按钮），其下为会话头与跨日标注（若有）；其余框为日志内容(支持 markdown、mermaid 图与 `$LaTeX$` 公式) / 时间 / **本段消耗(token/轮数)** / Git 分支 / 模型 / 项目目录，单次只展示一条；节点与详情间有低透明度静态虚线连接。
   - 页脚磨砂玻璃，标注当天时间跨度与总时长。
 
 另有 `<root>/aliases.js`（root 根目录，所有日期共享）：`window.AILOG_ALIASES = {...}` 会话别名资产，由 `--rename` / 右键固化维护；其人读真源为同目录 `aliases.json`。
+
+`<root>` 根还有三处指向 skill 内 git 受控资产的软链，`git pull` 更新 skill 后页面刷新即读到新内容、无需重渲染：`version.js`（版本号）、`mermaid.min.js`（mermaid 库）、`katex/`（KaTeX 公式库目录，含 `katex.min.js` / `katex.min.css` / `fonts/*.woff2`，离线可用，加载失败回退 CDN）。
