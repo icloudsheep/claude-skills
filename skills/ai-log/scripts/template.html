@@ -96,6 +96,17 @@
     font: 14px/1.6 var(--font);
     min-height: 100vh; -webkit-font-smoothing: antialiased;
     display: flex; flex-direction: column; transition: background .4s, color .4s; }
+  /* 整页窗口滚动条：沿用左侧泳道 .left 的细滚动条风格（9px、圆角、半透明 thumb、悬停加深），
+     使主页右侧随页面流动时的窗口滚动条与左栏视觉统一。Firefox 用 scrollbar-color 近似。 */
+  html { scrollbar-width: thin; scrollbar-color: rgba(60,72,110,.32) transparent; }
+  html::-webkit-scrollbar { width: 9px; }
+  html::-webkit-scrollbar-thumb { background: rgba(60,72,110,.32); border-radius: 9px; }
+  html::-webkit-scrollbar-thumb:hover { background: rgba(60,72,110,.5); }
+  html::-webkit-scrollbar-track { background: transparent; }
+  /* 暗色：半透明深色 thumb 在暗底上几乎不可见，改用浅色叠加（与 .left 同形、仅反色） */
+  html[data-mode="dark"] { scrollbar-color: rgba(180,195,235,.3) transparent; }
+  html[data-mode="dark"]::-webkit-scrollbar-thumb { background: rgba(180,195,235,.3); }
+  html[data-mode="dark"]::-webkit-scrollbar-thumb:hover { background: rgba(180,195,235,.5); }
   /* 非玻璃主题：纯色背景由 --page-bg 接管，隐藏流动渐变层 */
   html[data-style="neumorphism"] { --page-bg: var(--neu-surface); }
   html[data-style="newspaper"]   { --page-bg: var(--np-surface); }
