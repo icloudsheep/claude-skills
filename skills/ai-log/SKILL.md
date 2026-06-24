@@ -10,7 +10,9 @@ metadata:
 把「上次记录日志到现在」的工作内容总结后追加写入本地日志文件。
 
 > 命令入口为 `scripts/ai_logger.py`（薄入口，委托给同目录 `scripts/ailog/` 包：
-> config / session / store / transcript / render / entry / cli 各司其职）；模板为 `scripts/template.html`。
+> config / session / store / transcript / render / entry / cli 各司其职）。
+> 可视化模板 `scripts/template.html` 是**构建产物**——源码在 `scripts/src/`（CSS/JS/HTML 部件），
+> 由 `scripts/build/build_template.py` 拼装；改样式或前端逻辑请改 `src/` 后重跑构建脚本，勿手改产物。
 > 调用方式不变，仍为 `python3 <SKILL_DIR>/scripts/ai_logger.py ...`。
 > 下文用 `<SKILL_DIR>` 指代本 skill 所在目录的绝对路径（运行时以实际路径替换）。
 

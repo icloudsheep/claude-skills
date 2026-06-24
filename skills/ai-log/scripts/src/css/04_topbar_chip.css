@@ -1,0 +1,27 @@
+
+  /* 吸顶头部：整块磨砂玻璃 */
+  .topbar { position: sticky; top: 0; z-index: 20; padding: 20px clamp(18px,4vw,64px) 16px;
+    background: var(--lg-bg); border-bottom: var(--lg-border);
+    backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%);
+    box-shadow: 0 10px 30px -18px rgba(40,50,90,.45), var(--lg-inset);
+    animation: drop 1.4s cubic-bezier(.2,.8,.2,1) both; }
+  h1 { font-size: 24px; font-weight: 680; letter-spacing: .5px; display: flex; align-items: center; gap: 12px; }
+  h1 .cal { filter: drop-shadow(0 4px 12px rgba(120,160,255,.5)); }
+  .sub { color: var(--dim); margin-top: 5px; font-size: 13px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px 6px 9px;
+    background: var(--lg-bg); border: var(--lg-border); border-radius: 999px;
+    backdrop-filter: blur(10px) saturate(170%); -webkit-backdrop-filter: blur(10px) saturate(170%);
+    font-size: 12.5px; cursor: pointer; user-select: none; color: var(--txt);
+    transition: transform .4s, box-shadow .5s, background .5s;
+    /* 选中态：外发光阴影 + 液态玻璃内反光 */
+    box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--c) 60%, transparent), 0 6px 16px -7px var(--c), var(--lg-inset); }
+  .chip:hover { transform: translateY(-2px); }
+  /* 未选中态：内陷阴影 + 去色，无外发光 */
+  .chip.off { box-shadow: inset 0 2px 6px rgba(40,50,90,.28); filter: grayscale(.85); opacity: .55; background: rgba(255,255,255,.28); }
+  .chip .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+  .chip.off .dot { box-shadow: none; }
+  .chip .emo { font-size: 15px; } .chip .cnt { color: var(--dim); font-size: 11px; }
+  /* 自定义名后的自动代号：半透明小字 */
+  .auto-name { font-size: .82em; opacity: .5; margin-left: 2px; font-weight: 400; }
+

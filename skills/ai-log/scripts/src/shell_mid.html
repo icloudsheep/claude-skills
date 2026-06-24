@@ -1,0 +1,23 @@
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<svg class="link"><path id="linkpath"></path></svg>
+<div class="topbar" id="topbar"></div>
+<div id="app"></div>
+<footer id="footer"></footer>
+<!-- 数据走外部 JS 资产：file:// 下经典脚本不受 CORS 限制，页面运行时自行读取。
+     data.js 为当天数据（同目录）；aliases.js 为全局会话别名（root 根，所有日期共享 ../aliases.js）。
+     改别名只需重写 aliases.js，所有页面刷新即生效，无需重渲染 HTML。 -->
+<script src="./data.js"></script>
+<script src="../aliases.js"></script>
+<script src="../version.js"></script>
+<!-- mermaid 图表库：优先本地副本（root 根，离线可用），加载失败则回退 CDN。
+     onerror 动态换源；mermaid 就绪后由 renderMermaid() 渲染当前详情里的图。 -->
+<script src="../mermaid.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';s.onload=function(){window.__mermaidReady&&window.__mermaidReady()};document.head.appendChild(s);"></script>
+<!-- KaTeX 公式库：同样本地副本优先（root 根 katex/，含 woff2 字体，离线可用），失败回退 CDN。
+     css 里字体走相对路径 fonts/*.woff2；js 就绪后由 renderMath() 渲染当前详情里的公式。 -->
+<link rel="stylesheet" href="../katex/katex.min.css"
+      onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css';">
+<script src="../katex/katex.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';s.onload=function(){window.__katexReady&&window.__katexReady()};document.head.appendChild(s);"></script>
+<script>
