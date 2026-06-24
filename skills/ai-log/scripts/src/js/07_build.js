@@ -84,11 +84,13 @@ function build() {
     const rocket = e.mode === "full" ? `<span class="rocket" title="按主题总结（full 模式）">🚀</span>` : "";
     n.innerHTML = `<div class="knob">${e.emoji}<span class="num">${e.seq != null ? e.seq : i + 1}</span>${moon}${rocket}</div>`;
     n.dataset.i = i; n.dataset.sid = e.id;  // 会话 ID 用于 toggle
+    n.dataset.seq = e.seq != null ? e.seq : i + 1;  // 当天序号：删除重排时定位节点的稳定键
     n.dataset.tip = e.title ? e.title : autoName(s);  // 悬停气泡文案：标题，无则会话名
-    n.onclick = () => select(i, n);
+    // index 在删除重排时会变，故点击/右键时实时读 dataset.i（而非闭包捕获旧值）
+    n.onclick = () => select(+n.dataset.i, n);
     n.addEventListener("mouseenter", () => scheduleNodeTip(n));
     n.addEventListener("mouseleave", cancelNodeTip);
-    n.oncontextmenu = (ev) => { ev.preventDefault(); ev.stopPropagation(); openNodeMenu(ev, i, n); };
+    n.oncontextmenu = (ev) => { ev.preventDefault(); ev.stopPropagation(); openNodeMenu(ev, +n.dataset.i, n); };
     stage.appendChild(n);
   });
   left.appendChild(stage);

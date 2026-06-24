@@ -860,11 +860,13 @@ function build() {
     const rocket = e.mode === "full" ? `<span class="rocket" title="按主题总结（full 模式）">🚀</span>` : "";
     n.innerHTML = `<div class="knob">${e.emoji}<span class="num">${e.seq != null ? e.seq : i + 1}</span>${moon}${rocket}</div>`;
     n.dataset.i = i; n.dataset.sid = e.id;  // 会话 ID 用于 toggle
+    n.dataset.seq = e.seq != null ? e.seq : i + 1;  // 当天序号：删除重排时定位节点的稳定键
     n.dataset.tip = e.title ? e.title : autoName(s);  // 悬停气泡文案：标题，无则会话名
-    n.onclick = () => select(i, n);
+    // index 在删除重排时会变，故点击/右键时实时读 dataset.i（而非闭包捕获旧值）
+    n.onclick = () => select(+n.dataset.i, n);
     n.addEventListener("mouseenter", () => scheduleNodeTip(n));
     n.addEventListener("mouseleave", cancelNodeTip);
-    n.oncontextmenu = (ev) => { ev.preventDefault(); ev.stopPropagation(); openNodeMenu(ev, i, n); };
+    n.oncontextmenu = (ev) => { ev.preventDefault(); ev.stopPropagation(); openNodeMenu(ev, +n.dataset.i, n); };
     stage.appendChild(n);
   });
   left.appendChild(stage);
@@ -1309,11 +1311,46 @@ async function editEntry(e) {
   console.log(
     `已即时生效（本地）。如需永久写回 data.json（换设备/清缓存仍在），可运行：\n  ${editCmd(e, cmdFields)}`
   );
-  rebuildAll();
+  // 原地更新（零重建）：编辑只改当前条的标题/正文，节点数量与位置不变——
+  // 故无需 rebuildAll() 推倒重建，只刷新「内存条目 + 当前详情面板 + 该节点气泡」三处即可，
+  // 详情面板不关闭、节点不重放入场动画、连接线不抖动，体验连续。
+  applyEditInPlace(e, patch);
   showToast("已保存修改（本地即时生效）", { title: "编辑" });
 }
 
-// 删除条目：二次确认 → 写覆盖层 deleted 标记即时隐藏，控制台打印落盘命令。
+// 把一条编辑就地反映到 UI：内存 ENTRIES、当前详情面板标题/正文、对应节点的悬停气泡。
+function applyEditInPlace(e, patch) {
+  // 1) 同步内存条目（select 直接读 ENTRIES[i].title/summary，不更新会导致再次打开显示旧值）
+  const idx = ENTRIES.findIndex((x) => x === e || (x.id === e.id && x.seq === e.seq));
+  const ent = idx >= 0 ? ENTRIES[idx] : null;
+  if (ent) {
+    if ("title" in patch) ent.title = patch.title;
+    if ("summary" in patch) ent.summary = patch.summary;
+  }
+  // 2) 若当前详情面板正展示这一条，原地刷新标题与正文
+  if (ent && ACTIVE && +ACTIVE.dataset.i === idx) {
+    const wrap = document.getElementById("detailwrap");
+    if ("title" in patch) {
+      const titleEl = wrap.querySelector(".d-title");
+      if (titleEl) titleEl.textContent = patch.title ? patch.title : autoName(META[ent.id]);
+    }
+    if ("summary" in patch) {
+      const sumEl = wrap.querySelector(".d-sum");
+      if (sumEl) {
+        sumEl.innerHTML = renderMd(ent.summary);
+        renderMermaid(sumEl);
+        renderMath(sumEl);
+      }
+    }
+  }
+  // 3) 更新该节点的悬停气泡文案（标题变了，tip 跟着变）
+  if (ent && "title" in patch) {
+    const node = document.querySelector(`#stage .node[data-seq="${ent.seq}"]`);
+    if (node) node.dataset.tip = patch.title ? patch.title : autoName(META[ent.id]);
+  }
+}
+
+// 删除条目：二次确认 → 写覆盖层 deleted 标记，平滑移除节点（局部更新，非整页重建）。
 async function deleteEntry(e) {
   const ok = await confirmModal({
     title: "删除这条日志？",
@@ -1324,8 +1361,85 @@ async function deleteEntry(e) {
   saveEdit(entryKey(e), { deleted: true });
   console.log(`已本地删除。如需永久从 data.json 移除（换设备/清缓存仍生效），可运行：\n  ${deleteCmd(e)}`);
   closeDetail();
-  rebuildAll();
+  removeEntryInPlace(e);
   showToast("已删除（本地即时生效）", { title: "删除" });
+}
+
+// 平滑删除一条：被删节点淡出，其后所有节点上移补位，泳道线/stage 高度/胶囊计数/页脚随之更新。
+// 复杂边界（删空、某会话被删光需移除胶囊列）回退 rebuildAll() 兜底，保证一致性优先于动画。
+function removeEntryInPlace(e) {
+  const idx = ENTRIES.findIndex((x) => x === e || (x.id === e.id && x.seq === e.seq));
+  if (idx < 0) { rebuildAll(); return; }
+  const victim = ENTRIES[idx];
+  const sess = META[victim.id];
+  ENTRIES.splice(idx, 1);
+  // 边界回退：全删空、或被删条所属会话已无任何条目（需移除其胶囊与泳道列）
+  const sessionEmptied = !ENTRIES.some((x) => x.id === victim.id);
+  if (!ENTRIES.length || sessionEmptied) { rebuildAll(); return; }
+  if (sess) sess.count -= 1;
+
+  const stage = document.getElementById("stage");
+  const node = stage && stage.querySelector(`.node[data-seq="${victim.seq}"]`);
+  const finish = () => {
+    if (node) node.remove();
+    repositionNodesAfterDelete();
+  };
+  if (node) {
+    // 被删节点淡出缩小，过渡结束后移除并重排其余节点
+    node.style.transition = "opacity .28s ease, transform .28s ease";
+    node.style.opacity = "0";
+    node.style.transform = "translate(-50%, -50%) scale(.4)";
+    let done = false;
+    const onEnd = () => { if (done) return; done = true; node.removeEventListener("transitionend", onEnd); finish(); };
+    node.addEventListener("transitionend", onEnd);
+    setTimeout(onEnd, 360);  // 兜底
+  } else {
+    finish();
+  }
+  // 胶囊计数与页脚即时更新（不等动画）
+  refreshChipCounts();
+  renderFooter();
+}
+
+// 删除后：剩余节点按新顺序平移到正确行、更新 data-i/序号徽章，泳道线与 stage 高度收缩。
+function repositionNodesAfterDelete() {
+  const stage = document.getElementById("stage"), lane0 = document.getElementById("lane");
+  if (!stage) return;
+  const nodes = Array.from(stage.querySelectorAll(".node"));
+  // 按当前 top 排序即为视觉顺序；与 ENTRIES 一一对应重新编号
+  nodes.sort((a, b) => parseFloat(a.style.top) - parseFloat(b.style.top));
+  nodes.forEach((n, i) => {
+    n.style.transition = "top .42s cubic-bezier(.2,.8,.2,1)";
+    n.style.top = rowY(i) + "px";
+    n.dataset.i = i;
+  });
+  // 泳道竖线：每会话首末节点 y 重算
+  const ns = "http://www.w3.org/2000/svg";
+  const stageH = rowY(ENTRIES.length - 1) + TOP + 30;
+  SESSIONS.forEach((s) => {
+    const idxs = ENTRIES.map((en, k) => en.id === s.id ? k : -1).filter((k) => k >= 0);
+    if (!idxs.length) return;
+    const y1 = rowY(idxs[0]), y2 = rowY(idxs[idxs.length - 1]);
+    stage.querySelectorAll(`.rail[data-sid="${cssEsc(s.id)}"]`).forEach((line) => {
+      line.style.transition = "all .42s cubic-bezier(.2,.8,.2,1)";
+      line.setAttribute("y1", y1); line.setAttribute("y2", y2);
+      line.style.setProperty("--len", Math.max(y2 - y1, 1));
+    });
+    stage.querySelectorAll(`.rail-ext[data-sid="${cssEsc(s.id)}"]`).forEach((ext) => {
+      ext.setAttribute("y2", stageH);
+    });
+  });
+  stage.style.transition = "height .42s cubic-bezier(.2,.8,.2,1)";
+  stage.style.height = stageH + "px";
+}
+
+// 删除/计数变化后刷新胶囊上的「×N」计数（不重建胶囊本身）
+function refreshChipCounts() {
+  document.querySelectorAll(".chip").forEach((c) => {
+    const s = META[c.dataset.sid]; if (!s) return;
+    const cnt = c.querySelector(".cnt");
+    if (cnt) cnt.textContent = "×" + s.count;
+  });
 }
 
 // 节点右键菜单：预览 / 编辑 / 删除。i 为条目索引，node 为节点元素。
