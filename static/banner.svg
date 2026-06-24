@@ -1,0 +1,121 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="claude-skills：一块代码爆炸成多个模块">
+  <defs>
+    <!-- 背景：明亮多彩流动渐变，呼应 ai-log 玻璃主题配色 -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f6f8ff"/>
+      <stop offset="1" stop-color="#e8edfb"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="0.18" cy="0.1" r="0.9">
+      <stop offset="0" stop-color="#8ec5ff" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#8ec5ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0.9" cy="1" r="0.9">
+      <stop offset="0" stop-color="#c5a3ff" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#c5a3ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow3" cx="0.75" cy="0.05" r="0.7">
+      <stop offset="0" stop-color="#ffd17a" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#ffd17a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#2a3458" flood-opacity="0.28"/>
+    </filter>
+    <filter id="softS" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="9" flood-color="#2a3458" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- 背景层 -->
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <rect width="1200" height="420" fill="url(#glow1)"/>
+  <rect width="1200" height="420" fill="url(#glow2)"/>
+  <rect width="1200" height="420" fill="url(#glow3)"/>
+
+  <!-- 爆炸飞散的运动碎屑（小圆点 / 短线） -->
+  <g opacity="0.8">
+    <circle cx="470" cy="120" r="5" fill="#ff9eb3"/>
+    <circle cx="520" cy="300" r="4" fill="#46d1c4"/>
+    <circle cx="610" cy="90" r="6" fill="#ffd17a"/>
+    <circle cx="700" cy="330" r="5" fill="#9d7bff"/>
+    <circle cx="820" cy="120" r="4" fill="#6ea8fe"/>
+    <circle cx="900" cy="300" r="6" fill="#f178b6"/>
+    <circle cx="1010" cy="150" r="4" fill="#7ee787"/>
+    <circle cx="560" cy="200" r="3" fill="#ffb454"/>
+    <circle cx="960" cy="230" r="3" fill="#56c2ff"/>
+    <path d="M495 165 l26 -14" stroke="#ff9eb3" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+    <path d="M660 265 l28 12" stroke="#9d7bff" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+    <path d="M860 175 l24 -10" stroke="#6ea8fe" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+  </g>
+
+  <!-- 左侧：整块代码（裂开状，象征单文件） -->
+  <g filter="url(#soft)" transform="translate(120 110)">
+    <rect width="230" height="200" rx="18" fill="#39425e"/>
+    <rect width="230" height="200" rx="18" fill="#ffffff" opacity="0.04"/>
+    <!-- 顶部三圆点（窗口栏） -->
+    <circle cx="26" cy="26" r="7" fill="#ff6b6b"/>
+    <circle cx="50" cy="26" r="7" fill="#ffd17a"/>
+    <circle cx="74" cy="26" r="7" fill="#7ee787"/>
+    <!-- 代码行 -->
+    <rect x="24" y="58"  width="150" height="11" rx="5.5" fill="#8ea0c8"/>
+    <rect x="24" y="80"  width="120" height="11" rx="5.5" fill="#6ea8fe" opacity="0.9"/>
+    <rect x="44" y="102" width="138" height="11" rx="5.5" fill="#7d8cb0"/>
+    <rect x="44" y="124" width="100" height="11" rx="5.5" fill="#9d7bff" opacity="0.9"/>
+    <rect x="24" y="146" width="160" height="11" rx="5.5" fill="#7d8cb0"/>
+    <rect x="24" y="168" width="90"  height="11" rx="5.5" fill="#46d1c4" opacity="0.9"/>
+    <!-- 裂缝 -->
+    <path d="M150 0 L168 60 L150 110 L172 200" stroke="#1f2740" stroke-width="3" opacity="0.5" fill="none"/>
+  </g>
+
+  <!-- 中间：爆炸箭头 / 发散光 -->
+  <g transform="translate(380 210)">
+    <path d="M0 0 H80" stroke="#9d7bff" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+    <path d="M62 -14 L84 0 L62 14" stroke="#9d7bff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.55"/>
+  </g>
+
+  <!-- 右侧：爆炸飞散的小模块块（象征模块化拆分） -->
+  <!-- 块 1 -->
+  <g filter="url(#softS)" transform="translate(500 70) rotate(-9)">
+    <rect width="150" height="120" rx="14" fill="#8ec5ff"/>
+    <rect width="150" height="120" rx="14" fill="#ffffff" opacity="0.16"/>
+    <rect x="18" y="22" width="80" height="8" rx="4" fill="#ffffff" opacity="0.85"/>
+    <rect x="18" y="40" width="100" height="8" rx="4" fill="#ffffff" opacity="0.55"/>
+    <rect x="30" y="58" width="86" height="8" rx="4" fill="#ffffff" opacity="0.55"/>
+    <rect x="18" y="84" width="60" height="8" rx="4" fill="#ffffff" opacity="0.7"/>
+  </g>
+  <!-- 块 2 -->
+  <g filter="url(#softS)" transform="translate(690 100) rotate(7)">
+    <rect width="140" height="110" rx="14" fill="#9ee6c4"/>
+    <rect width="140" height="110" rx="14" fill="#ffffff" opacity="0.16"/>
+    <rect x="16" y="20" width="72" height="8" rx="4" fill="#1f5a44" opacity="0.7"/>
+    <rect x="16" y="37" width="96" height="8" rx="4" fill="#1f5a44" opacity="0.4"/>
+    <rect x="28" y="54" width="80" height="8" rx="4" fill="#1f5a44" opacity="0.4"/>
+    <rect x="16" y="78" width="54" height="8" rx="4" fill="#1f5a44" opacity="0.55"/>
+  </g>
+  <!-- 块 3 -->
+  <g filter="url(#softS)" transform="translate(560 230) rotate(6)">
+    <rect width="135" height="105" rx="14" fill="#c5a3ff"/>
+    <rect width="135" height="105" rx="14" fill="#ffffff" opacity="0.16"/>
+    <rect x="16" y="20" width="68" height="8" rx="4" fill="#ffffff" opacity="0.85"/>
+    <rect x="16" y="37" width="90" height="8" rx="4" fill="#ffffff" opacity="0.5"/>
+    <rect x="28" y="54" width="74" height="8" rx="4" fill="#ffffff" opacity="0.5"/>
+    <rect x="16" y="76" width="50" height="8" rx="4" fill="#ffffff" opacity="0.7"/>
+  </g>
+  <!-- 块 4 -->
+  <g filter="url(#softS)" transform="translate(870 70) rotate(-6)">
+    <rect width="138" height="108" rx="14" fill="#ffd17a"/>
+    <rect width="138" height="108" rx="14" fill="#ffffff" opacity="0.16"/>
+    <rect x="16" y="20" width="70" height="8" rx="4" fill="#7a5a18" opacity="0.7"/>
+    <rect x="16" y="37" width="92" height="8" rx="4" fill="#7a5a18" opacity="0.4"/>
+    <rect x="28" y="54" width="78" height="8" rx="4" fill="#7a5a18" opacity="0.4"/>
+    <rect x="16" y="78" width="52" height="8" rx="4" fill="#7a5a18" opacity="0.55"/>
+  </g>
+  <!-- 块 5 -->
+  <g filter="url(#softS)" transform="translate(840 240) rotate(8)">
+    <rect width="128" height="100" rx="14" fill="#ff9eb3"/>
+    <rect width="128" height="100" rx="14" fill="#ffffff" opacity="0.16"/>
+    <rect x="15" y="18" width="64" height="8" rx="4" fill="#ffffff" opacity="0.85"/>
+    <rect x="15" y="35" width="86" height="8" rx="4" fill="#ffffff" opacity="0.5"/>
+    <rect x="26" y="52" width="70" height="8" rx="4" fill="#ffffff" opacity="0.5"/>
+    <rect x="15" y="72" width="46" height="8" rx="4" fill="#ffffff" opacity="0.7"/>
+  </g>
+</svg>
