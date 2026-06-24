@@ -1,18 +1,20 @@
 let _scrollLocks = 0, _savedPadRight = "";
 function lockScroll() {
   if (_scrollLocks++ === 0) {
+    // 只冻结文档滚动容器（标准模式下为 documentElement/html）的 overflow。
+    // 关键：不要给 body 设 overflow:hidden——body 是 min-height:100vh 的 flex 容器，
+    // 给它设 overflow 会生成新的 BFC，使 position:sticky 的吸顶头部失去滚动上下文而“消失”。
+    // 仅锁 html 既能冻结背景滚动、又保持 topbar 原地吸顶可见。
     const sbw = window.innerWidth - document.documentElement.clientWidth;  // 滚动条宽度
-    _savedPadRight = document.body.style.paddingRight;
-    if (sbw > 0) document.body.style.paddingRight = sbw + "px";
+    _savedPadRight = document.documentElement.style.paddingRight;
+    if (sbw > 0) document.documentElement.style.paddingRight = sbw + "px";
     document.documentElement.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
   }
 }
 function unlockScroll() {
   if (_scrollLocks > 0 && --_scrollLocks === 0) {
     document.documentElement.style.overflow = "";
-    document.body.style.overflow = "";
-    document.body.style.paddingRight = _savedPadRight;
+    document.documentElement.style.paddingRight = _savedPadRight;
   }
 }
 
