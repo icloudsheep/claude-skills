@@ -15,6 +15,8 @@
 
 ## 新功能
 
+![ai-log 功能展示](static/ai-log-showcase.svg)
+
 `ai-log` 近期一轮增强（详见 [skills/ai-log](skills/ai-log)）：
 
 - **LaTeX 公式**：日志正文支持 `$行内$` 与 `$$块级$$` 公式，内置 KaTeX 本地副本，离线可用、加载失败回退 CDN。
@@ -25,6 +27,8 @@
 > 工程结构上，`ai-log` 的脚本与模板也做了模块化重构：`ai_logger.py` 拆为 `ailog/` 包，`template.html` 由 `src/` 各部件经构建脚本拼装（见下文目录结构）。
 
 ## Skills 协作关系
+
+![skills 协作流水线](static/workflow.svg)
 
 这四个 skill 不是孤立的，围绕「写代码 → 审查 → 提交 → 记录」一条链路彼此衔接：
 
@@ -74,6 +78,8 @@ skills/
 > `ai-log` 的 `template.html` 是构建产物——改前端样式 / 逻辑请改 `scripts/src/` 下对应部件，再运行 `scripts/build/build_template.py` 重新拼装。
 
 ## 安装
+
+![安装示意](static/install.svg)
 
 将 skill 目录放到 Claude Code 能发现的位置即可：
 
