@@ -1,0 +1,41 @@
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--page-bg, #c3cdf0); color: var(--txt);
+    font: 14px/1.6 var(--font);
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column; transition: background .4s, color .4s; }
+  /* 整页窗口滚动条：沿用左侧泳道 .left 的细滚动条风格（9px、圆角、半透明 thumb、悬停加深），
+     使主页右侧随页面流动时的窗口滚动条与左栏视觉统一。Firefox 用 scrollbar-color 近似。
+     同时作用于 html 与 body：标准模式下视口滚动条归属随布局可能在 html 或 body 上
+     （本页 body 为 min-height:100vh 的 flex 容器），两者都写才稳妥命中。 */
+  html, body { scrollbar-width: thin; scrollbar-color: rgba(60,72,110,.32) transparent; }
+  html::-webkit-scrollbar, body::-webkit-scrollbar { width: 9px; }
+  html::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb { background: rgba(60,72,110,.32); border-radius: 9px; }
+  html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover { background: rgba(60,72,110,.5); }
+  html::-webkit-scrollbar-track, body::-webkit-scrollbar-track { background: transparent; }
+  /* 暗色：半透明深色 thumb 在暗底上几乎不可见，改用浅色叠加（与 .left 同形、仅反色） */
+  html[data-mode="dark"], html[data-mode="dark"] body { scrollbar-color: rgba(180,195,235,.3) transparent; }
+  html[data-mode="dark"]::-webkit-scrollbar-thumb, html[data-mode="dark"] body::-webkit-scrollbar-thumb { background: rgba(180,195,235,.3); }
+  html[data-mode="dark"]::-webkit-scrollbar-thumb:hover, html[data-mode="dark"] body::-webkit-scrollbar-thumb:hover { background: rgba(180,195,235,.5); }
+  /* 非玻璃主题：纯色背景由 --page-bg 接管，隐藏流动渐变层 */
+  html[data-style="neumorphism"] { --page-bg: var(--neu-surface); }
+  html[data-style="newspaper"]   { --page-bg: var(--np-surface); }
+  /* 非玻璃主题：所有磨砂层去掉 backdrop-filter（纯色底，模糊纯属浪费 GPU）与镜面高光 */
+  html[data-style="neumorphism"] .topbar, html[data-style="neumorphism"] .chip,
+  html[data-style="neumorphism"] .box, html[data-style="neumorphism"] footer,
+  html[data-style="neumorphism"] .ctxmenu, html[data-style="neumorphism"] .toast, html[data-style="neumorphism"] .modal,
+  html[data-style="newspaper"] .topbar, html[data-style="newspaper"] .chip,
+  html[data-style="newspaper"] .box, html[data-style="newspaper"] footer,
+  html[data-style="newspaper"] .ctxmenu, html[data-style="newspaper"] .toast, html[data-style="newspaper"] .modal {
+    backdrop-filter: none; -webkit-backdrop-filter: none; }
+  html[data-style="neumorphism"] .box::before, html[data-style="neumorphism"] .toast::before,
+  html[data-style="neumorphism"] .modal::before,
+  html[data-style="newspaper"] .box::before, html[data-style="newspaper"] .toast::before,
+  html[data-style="newspaper"] .modal::before { display: none; }
+  /* 报纸主题：方角、硬墨线，去圆角的"印刷"质感 */
+  html[data-style="newspaper"] .box, html[data-style="newspaper"] .chip,
+  html[data-style="newspaper"] .toast, html[data-style="newspaper"] .modal,
+  html[data-style="newspaper"] .ctxmenu, html[data-style="newspaper"] .f,
+  html[data-style="newspaper"] .md .mermaid { border-radius: 2px; box-shadow: none; }
+  html[data-style="newspaper"] .topbar { box-shadow: none; border-bottom: 2px solid var(--np-rule); }
+  html[data-style="neumorphism"] .bg, html[data-style="newspaper"] .bg { display: none; }
+  #app { flex: 1 0 auto; }  /* 撑满剩余空间，把页脚顶到最底部 */

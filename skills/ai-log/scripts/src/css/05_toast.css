@@ -1,0 +1,41 @@
+  /* toast 容器：右上角，多个 toast 依序向下堆叠；移除时下方自动上移补位（flex 重排） */
+  #toast-wrap { position: fixed; top: 18px; right: 18px; z-index: 90;
+    display: flex; flex-direction: column; gap: 10px; align-items: flex-end; pointer-events: none; }
+  /* 单个 toast：液态玻璃圆角矩形——高亮描边 + 内层反光 + 顶部镜面高光 */
+  .toast { position: relative; max-width: min(380px, calc(100vw - 36px)); padding: 13px 18px;
+    border-radius: 16px; font-size: 15px; line-height: 1.5; color: var(--txt);
+    background: var(--lg-bg);
+    border: var(--lg-border);
+    backdrop-filter: blur(18px) saturate(185%); -webkit-backdrop-filter: blur(18px) saturate(185%);
+    box-shadow: 0 16px 40px -16px rgba(40,50,90,.55), var(--lg-inset);
+    overflow: hidden; pointer-events: auto; transform-origin: right center;
+    /* 初始态：从右侧偏移、缩小、微旋，等待进入 */
+    opacity: 0; transform: translateX(118%) scale(.9) rotate(1.5deg);
+    /* 进入：弹簧回弹曲线，位移/缩放带 overshoot，时长稍长更灵动 */
+    transition:
+      opacity .42s cubic-bezier(.22,1,.36,1),
+      transform .52s cubic-bezier(.34,1.56,.4,1),
+      max-height .42s cubic-bezier(.4,0,.2,1) .06s,
+      margin .42s cubic-bezier(.4,0,.2,1) .06s,
+      padding .42s cubic-bezier(.4,0,.2,1) .06s; }
+  .toast.on { opacity: 1; transform: translateX(0) scale(1) rotate(0deg); max-height: 240px; }
+  /* 退出：向右上方柔和飘出 + 缩小，曲线改顺滑 ease-in，时长加长，先飘走再压扁补位 */
+  .toast.out { pointer-events: none;
+    opacity: 0; transform: translateX(124%) translateY(-6px) scale(.82) rotate(2.5deg);
+    max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: -10px;
+    transition:
+      opacity .5s cubic-bezier(.4,0,1,1),
+      transform .58s cubic-bezier(.5,0,.75,0),
+      max-height .42s cubic-bezier(.4,0,.2,1) .22s,
+      margin .42s cubic-bezier(.4,0,.2,1) .22s,
+      padding .42s cubic-bezier(.4,0,.2,1) .22s; }
+  /* 顶部镜面高光 */
+  .toast::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 50%;
+    background: linear-gradient(to bottom, rgba(255,255,255,.45), transparent); pointer-events: none; }
+  .toast > * { position: relative; }
+  .toast .t-title { font-weight: 680; font-size: 15px; margin-bottom: 4px; color: var(--title-color); }
+  .toast .t-body { font-size: 14px; color: var(--dim); line-height: 1.55; overflow-wrap: anywhere; }
+  .toast.err .t-title { color: #b4453a; }
+  .toast.err { border-color: rgba(255,150,140,.8);
+    background: linear-gradient(135deg, rgba(255,228,224,.7), rgba(255,210,205,.4)); }
+  .toast.clickable { cursor: pointer; }
