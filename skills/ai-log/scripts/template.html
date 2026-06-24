@@ -338,6 +338,15 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; white-space: pre-wrap; overflow: auto; }
   /* 预览模态：只读渲染区，复用编辑模态宽度；内容超高时滚动 */
   .modal.preview .preview-body { margin-top: 14px; max-height: 64vh; overflow-y: auto; padding-right: 4px; }
+  /* 暗色适配：输入框/编辑框/取消按钮默认硬编码白底，在暗底上是刺眼亮白块；
+     改为半透明浅色叠加（与暗色 .f 字段框同理），placeholder 提亮，保证可读。 */
+  html[data-mode="dark"] .modal-input {
+    background: rgba(200,215,255,.08); border-color: rgba(160,180,230,.18); }
+  html[data-mode="dark"] .modal-input::placeholder { color: rgba(180,195,235,.42); }
+  html[data-mode="dark"] .modal-input:focus {
+    border-color: #6ea8fe; background: rgba(200,215,255,.13); }
+  html[data-mode="dark"] .modal-btn.cancel { background: rgba(200,215,255,.08); }
+  html[data-mode="dark"] .modal-btn.cancel:hover { background: rgba(200,215,255,.14); }
 
   .wrap { display: flex; gap: clamp(24px,4vw,64px); align-items: flex-start; padding: 26px clamp(18px,4vw,64px) 40px; }
   /* 左侧泳道：独立滚动视口 */
