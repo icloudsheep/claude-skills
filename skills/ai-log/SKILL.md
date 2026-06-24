@@ -9,7 +9,9 @@ metadata:
 
 把「上次记录日志到现在」的工作内容总结后追加写入本地日志文件。
 
-> 脚本位于本 skill 同目录的 `scripts/ai_logger.py`，模板为同目录 `scripts/template.html`。
+> 命令入口为 `scripts/ai_logger.py`（薄入口，委托给同目录 `scripts/ailog/` 包：
+> config / session / store / transcript / render / entry / cli 各司其职）；模板为 `scripts/template.html`。
+> 调用方式不变，仍为 `python3 <SKILL_DIR>/scripts/ai_logger.py ...`。
 > 下文用 `<SKILL_DIR>` 指代本 skill 所在目录的绝对路径（运行时以实际路径替换）。
 
 ## 保存目录（root）从哪来
