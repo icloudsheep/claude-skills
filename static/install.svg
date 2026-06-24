@@ -1,0 +1,49 @@
+<svg width="1200" height="260" viewBox="0 0 1200 260" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="安装：把 skill 目录软链到 Claude Code 能发现的位置">
+  <defs>
+    <linearGradient id="ibg" x1="0" y1="0" x2="1200" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f6f8ff"/><stop offset="1" stop-color="#eaeffb"/>
+    </linearGradient>
+    <filter id="is" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="7" stdDeviation="10" flood-color="#2a3458" flood-opacity="0.2"/></filter>
+  </defs>
+  <rect width="1200" height="260" fill="url(#ibg)"/>
+
+  <!-- 左：仓库 skills/ -->
+  <g filter="url(#is)" transform="translate(70 60)">
+    <rect width="260" height="140" rx="18" fill="#ffffff" opacity="0.85"/>
+    <rect width="260" height="140" rx="18" fill="#6ea8fe" opacity="0.08"/>
+    <text x="24" y="40" font-family="ui-monospace,Menlo,monospace" font-size="16" font-weight="700" fill="#2a3149">📦 仓库 skills/</text>
+    <text x="30" y="72"  font-family="ui-monospace,Menlo,monospace" font-size="14" fill="#5a6884">├ code-comment</text>
+    <text x="30" y="94"  font-family="ui-monospace,Menlo,monospace" font-size="14" fill="#5a6884">├ code-review</text>
+    <text x="30" y="116" font-family="ui-monospace,Menlo,monospace" font-size="14" fill="#5a6884">├ git-commit</text>
+    <text x="30" y="138" font-family="ui-monospace,Menlo,monospace" font-size="14" fill="#5a6884">└ ai-log</text>
+  </g>
+
+  <!-- 中：install.sh / ln -s -->
+  <g transform="translate(360 130)">
+    <path d="M0 0 H160" stroke="#9d7bff" stroke-width="5" stroke-linecap="round" opacity="0.6"/>
+    <path d="M140 -14 l22 14 l-22 14" stroke="#9d7bff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/>
+    <g transform="translate(20 -52)" filter="url(#is)">
+      <rect width="124" height="34" rx="10" fill="#2a3149"/>
+      <text x="62" y="22" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="14" fill="#9ee6c4">./install.sh</text>
+    </g>
+    <text x="80" y="44" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="13" fill="#7d8cb0">软链 / 拷贝</text>
+  </g>
+
+  <!-- 右：~/.claude/skills/ -->
+  <g filter="url(#is)" transform="translate(620 60)">
+    <rect width="280" height="140" rx="18" fill="#ffffff" opacity="0.85"/>
+    <rect width="280" height="140" rx="18" fill="#9d7bff" opacity="0.08"/>
+    <text x="24" y="40" font-family="ui-monospace,Menlo,monospace" font-size="16" font-weight="700" fill="#2a3149">🏠 ~/.claude/skills/</text>
+    <text x="30" y="72"  font-family="ui-monospace,Menlo,monospace" font-size="14" fill="#6ea8fe">├ code-comment →</text>
+    <text x="30" y="94"  font-family="ui-monospace,Menlo,monospace" font-size="14" fill="#46d1c4">├ code-review →</text>
+    <text x="30" y="116" font-family="ui-monospace,Menlo,monospace" font-size="14" fill="#ffb454">├ git-commit →</text>
+    <text x="30" y="138" font-family="ui-monospace,Menlo,monospace" font-size="14" fill="#9d7bff">└ ai-log →</text>
+  </g>
+
+  <!-- 最右：自动触发提示 -->
+  <g transform="translate(950 90)">
+    <g filter="url(#is)"><rect width="180" height="80" rx="16" fill="#ffffff" opacity="0.9"/></g>
+    <text x="90" y="34" text-anchor="middle" font-family="-apple-system,'PingFang SC',sans-serif" font-size="15" font-weight="700" fill="#2a3149">⚡ 按需自动触发</text>
+    <text x="90" y="58" text-anchor="middle" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13" fill="#5a6884">不常驻占用上下文</text>
+  </g>
+</svg>
