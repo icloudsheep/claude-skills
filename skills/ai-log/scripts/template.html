@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- ⚠️ 本文件由 scripts/build/build_template.py 从 scripts/src/ 各部件拼装而成，请勿手改。
+     改样式/逻辑请改 src/css/*.css、src/js/*.js 或 src/shell_*.html，再重跑 build_template.py。 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -94,6 +96,19 @@
     font: 14px/1.6 var(--font);
     min-height: 100vh; -webkit-font-smoothing: antialiased;
     display: flex; flex-direction: column; transition: background .4s, color .4s; }
+  /* 整页窗口滚动条：沿用左侧泳道 .left 的细滚动条风格（9px、圆角、半透明 thumb、悬停加深），
+     使主页右侧随页面流动时的窗口滚动条与左栏视觉统一。Firefox 用 scrollbar-color 近似。
+     同时作用于 html 与 body：标准模式下视口滚动条归属随布局可能在 html 或 body 上
+     （本页 body 为 min-height:100vh 的 flex 容器），两者都写才稳妥命中。 */
+  html, body { scrollbar-width: thin; scrollbar-color: rgba(60,72,110,.32) transparent; }
+  html::-webkit-scrollbar, body::-webkit-scrollbar { width: 9px; }
+  html::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb { background: rgba(60,72,110,.32); border-radius: 9px; }
+  html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover { background: rgba(60,72,110,.5); }
+  html::-webkit-scrollbar-track, body::-webkit-scrollbar-track { background: transparent; }
+  /* 暗色：半透明深色 thumb 在暗底上几乎不可见，改用浅色叠加（与 .left 同形、仅反色） */
+  html[data-mode="dark"], html[data-mode="dark"] body { scrollbar-color: rgba(180,195,235,.3) transparent; }
+  html[data-mode="dark"]::-webkit-scrollbar-thumb, html[data-mode="dark"] body::-webkit-scrollbar-thumb { background: rgba(180,195,235,.3); }
+  html[data-mode="dark"]::-webkit-scrollbar-thumb:hover, html[data-mode="dark"] body::-webkit-scrollbar-thumb:hover { background: rgba(180,195,235,.5); }
   /* 非玻璃主题：纯色背景由 --page-bg 接管，隐藏流动渐变层 */
   html[data-style="neumorphism"] { --page-bg: var(--neu-surface); }
   html[data-style="newspaper"]   { --page-bg: var(--np-surface); }
@@ -313,6 +328,25 @@
   .modal-btn.ok { color: #fff; border-color: transparent;
     background: linear-gradient(120deg, #6ea8fe, #9d7bff); box-shadow: 0 8px 20px -8px rgba(110,123,255,.7); }
   .modal-btn.ok:hover { filter: brightness(1.06); box-shadow: 0 10px 24px -8px rgba(110,123,255,.85); }
+  /* 危险确定键（删除）：红色渐变 */
+  .modal-btn.ok.danger { background: linear-gradient(120deg, #ff7a6e, #e0554a); box-shadow: 0 8px 20px -8px rgba(224,85,74,.7); }
+  /* 编辑模态：放宽宽度容纳源码框；标题/正文标签 + 等宽多行编辑框 */
+  .modal.edit { width: min(680px, calc(100vw - 40px)); }
+  .edit-label { display: block; margin-top: 14px; margin-bottom: 6px; font-size: 11px; letter-spacing: .4px;
+    text-transform: uppercase; color: var(--dim); }
+  .edit-body { min-height: 220px; max-height: 52vh; resize: vertical; line-height: 1.6;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; white-space: pre-wrap; overflow: auto; }
+  /* 预览模态：只读渲染区，复用编辑模态宽度；内容超高时滚动 */
+  .modal.preview .preview-body { margin-top: 14px; max-height: 64vh; overflow-y: auto; padding-right: 4px; }
+  /* 暗色适配：输入框/编辑框/取消按钮默认硬编码白底，在暗底上是刺眼亮白块；
+     改为半透明浅色叠加（与暗色 .f 字段框同理），placeholder 提亮，保证可读。 */
+  html[data-mode="dark"] .modal-input {
+    background: rgba(200,215,255,.08); border-color: rgba(160,180,230,.18); }
+  html[data-mode="dark"] .modal-input::placeholder { color: rgba(180,195,235,.42); }
+  html[data-mode="dark"] .modal-input:focus {
+    border-color: #6ea8fe; background: rgba(200,215,255,.13); }
+  html[data-mode="dark"] .modal-btn.cancel { background: rgba(200,215,255,.08); }
+  html[data-mode="dark"] .modal-btn.cancel:hover { background: rgba(200,215,255,.14); }
 
   .wrap { display: flex; gap: clamp(24px,4vw,64px); align-items: flex-start; padding: 26px clamp(18px,4vw,64px) 40px; }
   /* 左侧泳道：独立滚动视口 */
@@ -353,6 +387,17 @@
   #stage .node .moon + .rocket { top: 8px; }
   #stage .node:hover .knob { transform: scale(1.16); }
   #stage .node.active .knob { transform: scale(1.22); box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 30%, transparent), 0 0 20px var(--c); }
+  /* 节点悬停气泡：单例、挂在 body 上、fixed 定位，避免被左栏 overflow 裁剪。
+     由 JS 按节点位置摆放并填入标题，玻璃主题磨砂样式。 */
+  .node-tip { position: fixed; z-index: 95; padding: 7px 12px; border-radius: 10px; white-space: nowrap;
+    max-width: min(360px, 60vw); overflow: hidden; text-overflow: ellipsis;
+    font-size: 12.5px; font-weight: 600; line-height: 1.3; color: var(--txt);
+    background: var(--lg-bg); border: var(--lg-border);
+    backdrop-filter: blur(16px) saturate(185%); -webkit-backdrop-filter: blur(16px) saturate(185%);
+    box-shadow: 0 12px 30px -12px rgba(40,50,90,.55), var(--lg-inset);
+    opacity: 0; pointer-events: none; transform: translateY(4px);
+    transition: opacity .16s ease, transform .2s cubic-bezier(.2,.9,.3,1.2); }
+  .node-tip.on { opacity: 1; transform: translateY(0); }
 
   /* 连接线：静态虚线、低透明、最底层 */
   svg.link { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: -1; }
@@ -375,9 +420,20 @@
   .d-who { font-size: 18px; font-weight: 680; }
   .d-seq { margin-left: auto; font-size: 12px; color: var(--dim); border: 1px solid var(--line); padding: 3px 10px; border-radius: 999px; }
 
-  /* 标题：每条日志单独拎出的醒目大标题，置于详情面板首框顶部 */
+  /* 标题：每条日志单独拎出的醒目大标题，置于详情面板首框顶部。
+     右侧留出空间避让绝对定位的操作条，避免长标题压到按钮下方。 */
   .d-title { font-size: 21px; font-weight: 720; line-height: 1.35; letter-spacing: .3px;
-    color: var(--title-color); margin-bottom: 12px; }
+    color: var(--title-color); margin-bottom: 12px; padding-right: 170px; }
+  /* 详情操作条：右上角编辑/删除按钮 */
+  /* 详情操作条：绝对定位到首框右上角（脱离文档流，避免被随后整宽的 .d-title 盖住点击；
+     float 方案下浮动元素绘制层级在后续块级元素之下，是点击区"看得到点不到"的根因）。 */
+  .d-actions { position: absolute; top: 14px; right: 16px; z-index: 3; display: flex; gap: 8px; }
+  .d-act { font: inherit; font-size: 13px; padding: 8px 15px; border-radius: 10px; cursor: pointer;
+    color: var(--txt); background: var(--lg-bg); border: var(--lg-border);
+    box-shadow: var(--lg-inset); transition: transform .18s, box-shadow .3s, background .25s;
+    display: inline-flex; align-items: center; gap: 5px; line-height: 1; white-space: nowrap; }
+  .d-act:hover { transform: translateY(-1px); background: rgba(110,168,254,.14); }
+  .d-act.danger:hover { background: rgba(255,120,110,.16); color: #b4453a; }
   /* 标题下方的会话头降级为副信息 */
   .box .d-title + .d-head { padding-top: 10px; border-top: 1px solid var(--line); }
   .box .d-title + .d-head .d-emo { font-size: 22px; }
@@ -413,6 +469,13 @@
     text-align: center; }
   .md .mermaid svg { max-width: none; height: auto; }
   .md .mermaid[data-failed] { text-align: left; color: #b4453a; font: 12.5px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+  /* LaTeX 公式：块级居中、超宽横向滚动；行内随文。渲染失败回退红色等宽源码 */
+  .md .math-block { margin: 12px 0; overflow-x: auto; overflow-y: hidden; text-align: center; padding: 4px 0; }
+  .md .math-inline { padding: 0 1px; }
+  .md .math-block[data-failed], .md .math-inline[data-failed] {
+    color: #b4453a; font: 12.5px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+  /* KaTeX 颜色随主题文字色（亮/暗/报纸通用） */
+  .md .katex { color: var(--txt); font-size: 1.05em; }
   .md p { margin: 8px 0; } .md ul,.md ol { margin: 8px 0; padding-left: 22px; } .md li { margin: 3px 0; }
   .md a { color: color-mix(in srgb, var(--c) 60%, #1c2438); text-decoration: none; border-bottom: 1px dashed currentColor; }
   .md code { background: rgba(40,50,90,.1); padding: 1.5px 6px; border-radius: 5px; font: 12.5px/1.5 ui-monospace, Menlo, monospace; }
@@ -463,6 +526,11 @@
 <!-- mermaid 图表库：优先本地副本（root 根，离线可用），加载失败则回退 CDN。
      onerror 动态换源；mermaid 就绪后由 renderMermaid() 渲染当前详情里的图。 -->
 <script src="../mermaid.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';s.onload=function(){window.__mermaidReady&&window.__mermaidReady()};document.head.appendChild(s);"></script>
+<!-- KaTeX 公式库：同样本地副本优先（root 根 katex/，含 woff2 字体，离线可用），失败回退 CDN。
+     css 里字体走相对路径 fonts/*.woff2；js 就绪后由 renderMath() 渲染当前详情里的公式。 -->
+<link rel="stylesheet" href="../katex/katex.min.css"
+      onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css';">
+<script src="../katex/katex.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';s.onload=function(){window.__katexReady&&window.__katexReady()};document.head.appendChild(s);"></script>
 <script>
 // 数据真源：来自 data.js；缺失时退化为空，避免离线打开报错。
 const DATA = (typeof window.AILOG_DATA !== "undefined" && window.AILOG_DATA) || { date: "", entries: [] };
@@ -530,6 +598,43 @@ function displayNameHtml(s) {
     : esc(auto);
 }
 
+// ── 日志条目本地编辑覆盖层 ─────────────────────────────────────
+// 与别名同理的双层模型：网页内改标题/正文/删除 → 即时写 localStorage（跨设备不携带，
+// 但同源跨日期共享、刷新即生效），并在控制台打印 python 命令永久落盘到 data.json。
+// 覆盖项按「日期#seq」定位（seq 为当天写入时固定的全局序号，稳定可用）。
+const EDIT_KEY = "ai-log:edits";
+const entryKey = (e) => `${DATA.date}#${e.seq}`;
+function loadEdits() {
+  try { const v = JSON.parse(localStorage.getItem(EDIT_KEY) || "{}"); return v && typeof v === "object" ? v : {}; }
+  catch (_) { return {}; }
+}
+function saveEdit(key, patch) {
+  const m = loadEdits();
+  if (patch === null) delete m[key];
+  else m[key] = Object.assign({}, m[key], patch);
+  try { localStorage.setItem(EDIT_KEY, JSON.stringify(m)); } catch (_) {}
+}
+// 把覆盖层应用到原始条目，返回生效后的副本（含 _deleted 标记）
+function effectiveEntry(e) {
+  const ov = loadEdits()[entryKey(e)];
+  if (!ov) return e;
+  const merged = Object.assign({}, e);
+  if (ov.deleted) merged._deleted = true;
+  if (ov.title != null) merged.title = ov.title;
+  if (ov.summary != null) merged.summary = ov.summary;
+  return merged;
+}
+// 可复制的落盘命令（永久写回 data.json，换设备/清缓存仍在）
+const editCmd = (e, fields) => {
+  const parts = [`python3 <skill>/scripts/ai_logger.py --edit "${DATA.date}" ${e.seq}`];
+  if ("title" in fields) parts.push(`--title ${shq(fields.title)}`);
+  if ("summary" in fields) parts.push(`--summary ${shq(fields.summary)}`);
+  return parts.join(" ");
+};
+const deleteCmd = (e) => `python3 <skill>/scripts/ai_logger.py --delete "${DATA.date}" ${e.seq}`;
+// shell 单引号转义：把内部 ' 替换为 '\'' ，整体用单引号包裹
+const shq = (s) => "'" + String(s == null ? "" : s).replace(/'/g, "'\\''") + "'";
+
 function mdInline(s) {
   return esc(s)
     .replace(/`([^`]+)`/g, (m, c) => `<code>${c}</code>`)
@@ -538,7 +643,19 @@ function mdInline(s) {
     .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
 }
 function renderMd(src) {
-  const lines = String(src || "").replace(/\r\n/g, "\n").split("\n");
+  src = String(src || "").replace(/\r\n/g, "\n");
+  // ── 公式预处理：先把 LaTeX 抽成占位符，避免被 markdown 行内解析（_ * \ 等）破坏 ──
+  // 先「藏起」代码块与行内代码，使其中的 $（如 shell $VAR）不被误判为公式；抽完公式再还原。
+  const math = [], stash = [];
+  src = src.replace(/```[\s\S]*?```/g, (m) => { stash.push(m); return ` C${stash.length - 1} `; });
+  src = src.replace(/`[^`\n]*`/g, (m) => { stash.push(m); return ` C${stash.length - 1} `; });
+  // 块级 $$...$$（可跨行）→ 占位；随后行内 $...$（同行、非空、不与 $$ 冲突）
+  src = src.replace(/\$\$([\s\S]+?)\$\$/g, (m, c) => { math.push({ display: true, src: c.trim() }); return ` M${math.length - 1} `; });
+  src = src.replace(/(^|[^\\$])\$(?!\$)([^\n$]+?)\$(?!\$)/g, (m, pre, c) => { math.push({ display: false, src: c.trim() }); return `${pre} M${math.length - 1} `; });
+  // 还原代码区，交给下方行解析器正常处理
+  src = src.replace(/ C(\d+) /g, (m, i) => stash[+i]);
+
+  const lines = src.split("\n");
   let html = "", i = 0;
   const st = []; const closeList = () => { while (st.length) html += st.pop() === "ul" ? "</ul>" : "</ol>"; };
   while (i < lines.length) {
@@ -568,7 +685,18 @@ function renderMd(src) {
     if (ln.trim() === "") { closeList(); i++; continue; }
     closeList(); html += `<p>${mdInline(ln)}</p>`; i++;
   }
-  closeList(); return html;
+  closeList();
+  // ── 还原公式占位符为容器元素（源码存 data-src，KaTeX 就绪后由 renderMath 填充）──
+  const mathEl = (idx) => {
+    const it = math[idx];
+    return it.display
+      ? `<div class="math-block" data-src="${esc(it.src)}"></div>`
+      : `<span class="math-inline" data-src="${esc(it.src)}"></span>`;
+  };
+  // 独占整段的块级公式：剥掉外层 <p>，避免 div 嵌在 p 内导致浏览器自动断开
+  html = html.replace(/<p> M(\d+) <\/p>/g, (m, i) => mathEl(+i));
+  html = html.replace(/ M(\d+) /g, (m, i) => mathEl(+i));
+  return html;
 }
 
 // ── mermaid 渲染 ───────────────────────────────────────────────
@@ -597,13 +725,20 @@ async function renderMermaid(scope) {
     el.setAttribute("data-src", src);                       // 留存源码以便重渲染
     el.setAttribute("data-done", "1");
     el.removeAttribute("data-failed");
-    try {
-      const id = "mmd-" + Math.random().toString(36).slice(2, 9);
-      const { svg } = await window.mermaid.render(id, src);
-      el.innerHTML = svg;
-    } catch (e) {
-      el.setAttribute("data-failed", "1");
-      el.textContent = "mermaid 渲染失败：\n" + src;
+    // mermaid v11 的 render 首次偶发抛错（DOM/字体测量时机），重试一次多能成功，
+    // 与「刷新后有概率生效」现象吻合。两次都失败才回退源码文本。
+    let ok = false;
+    for (let attempt = 0; attempt < 2 && !ok; attempt++) {
+      try {
+        const id = "mmd-" + Math.random().toString(36).slice(2, 9);
+        const { svg } = await window.mermaid.render(id, src);
+        el.innerHTML = svg;
+        ok = true;
+      } catch (e) {
+        if (attempt === 0) { await new Promise((r) => setTimeout(r, 60)); continue; }
+        el.setAttribute("data-failed", "1");
+        el.textContent = "mermaid 渲染失败：\n" + src;
+      }
     }
   }
 }
@@ -611,10 +746,43 @@ async function renderMermaid(scope) {
 window.__mermaidReady = function () { _mermaidPending = false; renderMermaid(); };
 window.addEventListener("load", () => { if (_mermaidPending || document.querySelector(".mermaid:not([data-done])")) renderMermaid(); });
 
+// ── KaTeX 公式渲染 ─────────────────────────────────────────────
+// 与 mermaid 同构：库可能异步到达（本地或 CDN 回退）。renderMath 把详情面板里
+// 的 .math-block / .math-inline 占位（data-src 存源码）就地渲染为公式；库未到则挂起，
+// __katexReady 回调或 load 后补渲染。失败回退红色源码，不影响其余正文。
+let _katexPending = false;
+function renderMath(scope) {
+  const root = scope || document;
+  const nodes = root.querySelectorAll(".math-block:not([data-done]), .math-inline:not([data-done])");
+  if (!nodes.length) return;
+  if (typeof window.katex === "undefined") { _katexPending = true; return; }  // 库未到，待回调补渲染
+  for (const el of nodes) {
+    const src = el.getAttribute("data-src") || "";
+    el.setAttribute("data-done", "1");
+    el.removeAttribute("data-failed");
+    try {
+      window.katex.render(src, el, {
+        displayMode: el.classList.contains("math-block"),
+        throwOnError: false, output: "html",
+      });
+    } catch (e) {
+      el.setAttribute("data-failed", "1");
+      el.textContent = (el.classList.contains("math-block") ? "$$" : "$") + src + (el.classList.contains("math-block") ? "$$" : "$");
+    }
+  }
+}
+window.__katexReady = function () { _katexPending = false; renderMath(); };
+window.addEventListener("load", () => { if (_katexPending || document.querySelector(".math-block:not([data-done]), .math-inline:not([data-done])")) renderMath(); });
+
 let META = {}, SESSIONS = [], ENTRIES = [];
 
 function build() {
-  ENTRIES = (DATA.entries || []).slice();
+  // 应用本地编辑覆盖层：合并标题/正文改动、剔除已删除条目（seq 保持原值用于定位）
+  ENTRIES = (DATA.entries || []).map(effectiveEntry).filter((e) => !e._deleted);
+
+  // 重建前清空容器，使 rebuildAll() 可重复调用（编辑/删除后重渲染）
+  document.getElementById("topbar").innerHTML = "";
+  document.getElementById("app").innerHTML = "";
 
   // 会话元信息：列号 + 颜色
   SESSIONS = []; META = {};
@@ -692,7 +860,13 @@ function build() {
     const rocket = e.mode === "full" ? `<span class="rocket" title="按主题总结（full 模式）">🚀</span>` : "";
     n.innerHTML = `<div class="knob">${e.emoji}<span class="num">${e.seq != null ? e.seq : i + 1}</span>${moon}${rocket}</div>`;
     n.dataset.i = i; n.dataset.sid = e.id;  // 会话 ID 用于 toggle
-    n.onclick = () => select(i, n);
+    n.dataset.seq = e.seq != null ? e.seq : i + 1;  // 当天序号：删除重排时定位节点的稳定键
+    n.dataset.tip = e.title ? e.title : autoName(s);  // 悬停气泡文案：标题，无则会话名
+    // index 在删除重排时会变，故点击/右键时实时读 dataset.i（而非闭包捕获旧值）
+    n.onclick = () => select(+n.dataset.i, n);
+    n.addEventListener("mouseenter", () => scheduleNodeTip(n));
+    n.addEventListener("mouseleave", cancelNodeTip);
+    n.oncontextmenu = (ev) => { ev.preventDefault(); ev.stopPropagation(); openNodeMenu(ev, +n.dataset.i, n); };
     stage.appendChild(n);
   });
   left.appendChild(stage);
@@ -707,13 +881,21 @@ function build() {
   document.getElementById("app").appendChild(wrap);
 
   // 泳道滚动时重绘连接线
-  left.addEventListener("scroll", scheduleDrawLink, { passive: true });
+  left.addEventListener("scroll", () => { scheduleDrawLink(); cancelNodeTip(); }, { passive: true });
 
   // 页脚：标注时间跨度
   renderFooter();
 }
 
 let ACTIVE = null;
+
+// 编辑/删除后整页重渲染：重置选中态与连接线，重新 build，再同步吸顶高度
+function rebuildAll() {
+  ACTIVE = null;
+  document.getElementById("linkpath").classList.remove("on");
+  build();
+  syncTopbar();
+}
 
 // 右键胶囊 → 在鼠标位置动画弹出上下文菜单（含「重命名」「清除自定义名」）
 // 通用上下文菜单渲染器。items 元素：{label, act, check} 或 {sep:true}。head 可选（标题行）。
@@ -883,6 +1065,7 @@ function showAbout() {
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  lockScroll();
   requestAnimationFrame(() => overlay.classList.add("on"));
 
   const fw = startFireworks(overlay.querySelector(".fireworks"));
@@ -892,7 +1075,7 @@ function showAbout() {
     fw && fw.stop();
     overlay.classList.remove("on");
     document.removeEventListener("keydown", onKey, true);
-    setTimeout(() => overlay.remove(), 300);
+    setTimeout(() => { overlay.remove(); unlockScroll(); }, 300);
   };
   const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); close(); } };
   document.addEventListener("keydown", onKey, true);
@@ -985,6 +1168,7 @@ function showAbout() {
 // 整页右键弹页面菜单；胶囊上的右键由 chip 自身的 oncontextmenu 处理（stopPropagation 区分）
 document.addEventListener("contextmenu", (e) => {
   if (e.target.closest(".chip")) return;  // 胶囊交给 openChipMenu
+  if (e.target.closest("#stage .node")) return;  // 节点交给 openNodeMenu
   e.preventDefault();
   openPageMenu(e);
 });
@@ -997,6 +1181,30 @@ function closeChipMenu() {
 document.addEventListener("click", (e) => { if (!e.target.closest(".ctxmenu")) closeChipMenu(); }, true);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeChipMenu(); });
 window.addEventListener("scroll", closeChipMenu, { passive: true });
+
+// 模态打开期间锁定背景上下滚动（引用计数，支持多层模态叠加）。
+// 锁定时给 body 补一段 padding 抵消滚动条消失带来的横向跳动。解锁还原。
+// overflow 同时压到 html 与 body：本页 body 为 flex 列布局、视口滚动条多挂在 html 上，
+// 只锁 body 不一定生效，两者都锁才稳。
+let _scrollLocks = 0, _savedPadRight = "";
+function lockScroll() {
+  if (_scrollLocks++ === 0) {
+    // 只冻结文档滚动容器（标准模式下为 documentElement/html）的 overflow。
+    // 关键：不要给 body 设 overflow:hidden——body 是 min-height:100vh 的 flex 容器，
+    // 给它设 overflow 会生成新的 BFC，使 position:sticky 的吸顶头部失去滚动上下文而“消失”。
+    // 仅锁 html 既能冻结背景滚动、又保持 topbar 原地吸顶可见。
+    const sbw = window.innerWidth - document.documentElement.clientWidth;  // 滚动条宽度
+    _savedPadRight = document.documentElement.style.paddingRight;
+    if (sbw > 0) document.documentElement.style.paddingRight = sbw + "px";
+    document.documentElement.style.overflow = "hidden";
+  }
+}
+function unlockScroll() {
+  if (_scrollLocks > 0 && --_scrollLocks === 0) {
+    document.documentElement.style.overflow = "";
+    document.documentElement.style.paddingRight = _savedPadRight;
+  }
+}
 
 // 自定义居中模态输入框：背景黑化遮罩 + 磨砂半透明卡片 + 动画展开。
 // 返回 Promise<string|null>：确定 → 输入值（已 trim）；取消 / 关闭 → null。
@@ -1015,6 +1223,7 @@ function promptModal({ title, desc, value = "", placeholder = "", okText = "确�
         </div>
       </div>`;
     document.body.appendChild(overlay);
+    lockScroll();
     const input = overlay.querySelector(".modal-input");
     input.value = value;
     requestAnimationFrame(() => overlay.classList.add("on"));
@@ -1025,7 +1234,7 @@ function promptModal({ title, desc, value = "", placeholder = "", okText = "确�
       if (done) return; done = true;
       overlay.classList.remove("on");
       document.removeEventListener("keydown", onKey, true);
-      setTimeout(() => overlay.remove(), 260);   // 等退出动画
+      setTimeout(() => { overlay.remove(); unlockScroll(); }, 260);   // 等退出动画
       resolve(val);
     };
     const onKey = (e) => {
@@ -1041,6 +1250,281 @@ function promptModal({ title, desc, value = "", placeholder = "", okText = "确�
 
 // 可复制的 --rename 命令（便于永久固化到 aliases.js）
 const renameCmd = (id, alias) => `python3 <skill>/scripts/ai_logger.py --rename "${id}" "${alias}"`;
+
+// 条目编辑模态：标题（单行文本）+ 正文（markdown 源码多行框）。
+// 返回 Promise<{title, summary}|null>：确定 → 改后的值；取消 / 关闭 → null。
+function editModal({ title = "", summary = "" }) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal edit" role="dialog" aria-modal="true">
+        <div class="modal-title">编辑日志</div>
+        <div class="modal-desc">正文为 <b>Markdown 源码</b>（支持 mermaid 代码块与 $LaTeX$ 公式）· ⌘/Ctrl+Enter 保存</div>
+        <label class="edit-label">标题</label>
+        <input class="modal-input edit-title" type="text" placeholder="日志标题（留空则显示会话名）" />
+        <label class="edit-label">正文（Markdown）</label>
+        <textarea class="modal-input edit-body" spellcheck="false" placeholder="在此编辑 Markdown 源码…"></textarea>
+        <div class="modal-actions">
+          <button class="modal-btn cancel">取消</button>
+          <button class="modal-btn ok">保存</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    lockScroll();
+    const tEl = overlay.querySelector(".edit-title"), bEl = overlay.querySelector(".edit-body");
+    tEl.value = title; bEl.value = summary;
+    requestAnimationFrame(() => overlay.classList.add("on"));
+    setTimeout(() => { bEl.focus(); }, 60);
+
+    let done = false;
+    const close = (val) => {
+      if (done) return; done = true;
+      overlay.classList.remove("on");
+      document.removeEventListener("keydown", onKey, true);
+      setTimeout(() => { overlay.remove(); unlockScroll(); }, 260);
+      resolve(val);
+    };
+    const submit = () => close({ title: tEl.value.trim(), summary: bEl.value });
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); close(null); }
+      else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); }
+    };
+    document.addEventListener("keydown", onKey, true);
+    overlay.querySelector(".ok").onclick = submit;
+    overlay.querySelector(".cancel").onclick = () => close(null);
+    overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) close(null); });
+  });
+}
+
+// 编辑条目：弹源码编辑框 → 写 localStorage 覆盖层即时生效，控制台打印落盘命令。
+// 只把「与原值不同」的字段写入覆盖层，保持 patch 最小。
+async function editEntry(e) {
+  const cur = effectiveEntry(e);
+  const res = await editModal({ title: cur.title || "", summary: cur.summary || "" });
+  if (res === null) return;
+  const patch = {}, cmdFields = {};
+  if (res.title !== (e.title || "")) { patch.title = res.title; cmdFields.title = res.title; }
+  if (res.summary !== (e.summary || "")) { patch.summary = res.summary; cmdFields.summary = res.summary; }
+  if (!Object.keys(patch).length) { showToast("内容未变更", { title: "编辑" }); return; }
+  saveEdit(entryKey(e), patch);
+  console.log(
+    `已即时生效（本地）。如需永久写回 data.json（换设备/清缓存仍在），可运行：\n  ${editCmd(e, cmdFields)}`
+  );
+  // 原地更新（零重建）：编辑只改当前条的标题/正文，节点数量与位置不变——
+  // 故无需 rebuildAll() 推倒重建，只刷新「内存条目 + 当前详情面板 + 该节点气泡」三处即可，
+  // 详情面板不关闭、节点不重放入场动画、连接线不抖动，体验连续。
+  applyEditInPlace(e, patch);
+  showToast("已保存修改（本地即时生效）", { title: "编辑" });
+}
+
+// 把一条编辑就地反映到 UI：内存 ENTRIES、当前详情面板标题/正文、对应节点的悬停气泡。
+function applyEditInPlace(e, patch) {
+  // 1) 同步内存条目（select 直接读 ENTRIES[i].title/summary，不更新会导致再次打开显示旧值）
+  const idx = ENTRIES.findIndex((x) => x === e || (x.id === e.id && x.seq === e.seq));
+  const ent = idx >= 0 ? ENTRIES[idx] : null;
+  if (ent) {
+    if ("title" in patch) ent.title = patch.title;
+    if ("summary" in patch) ent.summary = patch.summary;
+  }
+  // 2) 若当前详情面板正展示这一条，原地刷新标题与正文
+  if (ent && ACTIVE && +ACTIVE.dataset.i === idx) {
+    const wrap = document.getElementById("detailwrap");
+    if ("title" in patch) {
+      const titleEl = wrap.querySelector(".d-title");
+      if (titleEl) titleEl.textContent = patch.title ? patch.title : autoName(META[ent.id]);
+    }
+    if ("summary" in patch) {
+      const sumEl = wrap.querySelector(".d-sum");
+      if (sumEl) {
+        sumEl.innerHTML = renderMd(ent.summary);
+        renderMermaid(sumEl);
+        renderMath(sumEl);
+      }
+    }
+  }
+  // 3) 更新该节点的悬停气泡文案（标题变了，tip 跟着变）
+  if (ent && "title" in patch) {
+    const node = document.querySelector(`#stage .node[data-seq="${ent.seq}"]`);
+    if (node) node.dataset.tip = patch.title ? patch.title : autoName(META[ent.id]);
+  }
+}
+
+// 删除条目：二次确认 → 写覆盖层 deleted 标记，平滑移除节点（局部更新，非整页重建）。
+async function deleteEntry(e) {
+  const ok = await confirmModal({
+    title: "删除这条日志？",
+    desc: `<b>${esc(effectiveEntry(e).title || autoName(META[e.id]))}</b><br>本地删除即时生效（可清除 localStorage 恢复）。永久删除需运行控制台打印的命令。`,
+    okText: "删除", danger: true,
+  });
+  if (!ok) return;
+  saveEdit(entryKey(e), { deleted: true });
+  console.log(`已本地删除。如需永久从 data.json 移除（换设备/清缓存仍生效），可运行：\n  ${deleteCmd(e)}`);
+  closeDetail();
+  removeEntryInPlace(e);
+  showToast("已删除（本地即时生效）", { title: "删除" });
+}
+
+// 平滑删除一条：被删节点淡出，其后所有节点上移补位，泳道线/stage 高度/胶囊计数/页脚随之更新。
+// 复杂边界（删空、某会话被删光需移除胶囊列）回退 rebuildAll() 兜底，保证一致性优先于动画。
+function removeEntryInPlace(e) {
+  const idx = ENTRIES.findIndex((x) => x === e || (x.id === e.id && x.seq === e.seq));
+  if (idx < 0) { rebuildAll(); return; }
+  const victim = ENTRIES[idx];
+  const sess = META[victim.id];
+  ENTRIES.splice(idx, 1);
+  // 边界回退：全删空、或被删条所属会话已无任何条目（需移除其胶囊与泳道列）
+  const sessionEmptied = !ENTRIES.some((x) => x.id === victim.id);
+  if (!ENTRIES.length || sessionEmptied) { rebuildAll(); return; }
+  if (sess) sess.count -= 1;
+
+  const stage = document.getElementById("stage");
+  const node = stage && stage.querySelector(`.node[data-seq="${victim.seq}"]`);
+  const finish = () => {
+    if (node) node.remove();
+    repositionNodesAfterDelete();
+  };
+  if (node) {
+    // 被删节点淡出缩小，过渡结束后移除并重排其余节点
+    node.style.transition = "opacity .28s ease, transform .28s ease";
+    node.style.opacity = "0";
+    node.style.transform = "translate(-50%, -50%) scale(.4)";
+    let done = false;
+    const onEnd = () => { if (done) return; done = true; node.removeEventListener("transitionend", onEnd); finish(); };
+    node.addEventListener("transitionend", onEnd);
+    setTimeout(onEnd, 360);  // 兜底
+  } else {
+    finish();
+  }
+  // 胶囊计数与页脚即时更新（不等动画）
+  refreshChipCounts();
+  renderFooter();
+}
+
+// 删除后：剩余节点按新顺序平移到正确行、更新 data-i/序号徽章，泳道线与 stage 高度收缩。
+function repositionNodesAfterDelete() {
+  const stage = document.getElementById("stage"), lane0 = document.getElementById("lane");
+  if (!stage) return;
+  const nodes = Array.from(stage.querySelectorAll(".node"));
+  // 按当前 top 排序即为视觉顺序；与 ENTRIES 一一对应重新编号
+  nodes.sort((a, b) => parseFloat(a.style.top) - parseFloat(b.style.top));
+  nodes.forEach((n, i) => {
+    n.style.transition = "top .42s cubic-bezier(.2,.8,.2,1)";
+    n.style.top = rowY(i) + "px";
+    n.dataset.i = i;
+  });
+  // 泳道竖线：每会话首末节点 y 重算
+  const ns = "http://www.w3.org/2000/svg";
+  const stageH = rowY(ENTRIES.length - 1) + TOP + 30;
+  SESSIONS.forEach((s) => {
+    const idxs = ENTRIES.map((en, k) => en.id === s.id ? k : -1).filter((k) => k >= 0);
+    if (!idxs.length) return;
+    const y1 = rowY(idxs[0]), y2 = rowY(idxs[idxs.length - 1]);
+    stage.querySelectorAll(`.rail[data-sid="${cssEsc(s.id)}"]`).forEach((line) => {
+      line.style.transition = "all .42s cubic-bezier(.2,.8,.2,1)";
+      line.setAttribute("y1", y1); line.setAttribute("y2", y2);
+      line.style.setProperty("--len", Math.max(y2 - y1, 1));
+    });
+    stage.querySelectorAll(`.rail-ext[data-sid="${cssEsc(s.id)}"]`).forEach((ext) => {
+      ext.setAttribute("y2", stageH);
+    });
+  });
+  stage.style.transition = "height .42s cubic-bezier(.2,.8,.2,1)";
+  stage.style.height = stageH + "px";
+}
+
+// 删除/计数变化后刷新胶囊上的「×N」计数（不重建胶囊本身）
+function refreshChipCounts() {
+  document.querySelectorAll(".chip").forEach((c) => {
+    const s = META[c.dataset.sid]; if (!s) return;
+    const cnt = c.querySelector(".cnt");
+    if (cnt) cnt.textContent = "×" + s.count;
+  });
+}
+
+// 节点右键菜单：预览 / 编辑 / 删除。i 为条目索引，node 为节点元素。
+function openNodeMenu(ev, i, node) {
+  cancelNodeTip();
+  const e = ENTRIES[i], s = META[e.id];
+  const head = `<span class="emo">${e.emoji}</span>${esc(effectiveEntry(e).title || autoName(s))}`;
+  openMenu(ev, { head, items: [
+    { label: "👁️ 预览", act: () => previewEntry(e) },
+    { label: "✏️ 编辑", act: () => editEntry(e) },
+    { sep: true },
+    { label: "🗑️ 删除", act: () => deleteEntry(e) },
+  ] });
+}
+
+// 预览：复用编辑模态的外壳尺寸，但只读——渲染 markdown / mermaid / 公式，无输入框与保存。
+function previewEntry(e) {
+  const cur = effectiveEntry(e), s = META[e.id];
+  const title = cur.title || autoName(s);
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal edit preview" role="dialog" aria-modal="true">
+      <div class="modal-title">${esc(title)}</div>
+      <div class="preview-body md"></div>
+      <div class="modal-actions">
+        <button class="modal-btn ok">关闭</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  lockScroll();
+  const bodyEl = overlay.querySelector(".preview-body");
+  bodyEl.innerHTML = renderMd(cur.summary || "");
+  renderMermaid(bodyEl);   // 渲染预览里的 mermaid 图
+  renderMath(bodyEl);      // 渲染预览里的 LaTeX 公式
+  requestAnimationFrame(() => overlay.classList.add("on"));
+
+  let done = false;
+  const close = () => {
+    if (done) return; done = true;
+    overlay.classList.remove("on");
+    document.removeEventListener("keydown", onKey, true);
+    setTimeout(() => { overlay.remove(); unlockScroll(); }, 260);
+  };
+  const onKey = (ev2) => { if (ev2.key === "Escape") { ev2.preventDefault(); close(); } };
+  document.addEventListener("keydown", onKey, true);
+  overlay.querySelector(".ok").onclick = close;
+  overlay.addEventListener("mousedown", (ev2) => { if (ev2.target === overlay) close(); });
+}
+
+// 二次确认模态（复用 modal 样式）：返回 Promise<boolean>。danger=true 时确定键为红色。
+function confirmModal({ title, desc, okText = "确定", cancelText = "取消", danger = false }) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal-title">${esc(title)}</div>
+        ${desc ? `<div class="modal-desc">${desc}</div>` : ""}
+        <div class="modal-actions">
+          <button class="modal-btn cancel">${esc(cancelText)}</button>
+          <button class="modal-btn ok${danger ? " danger" : ""}">${esc(okText)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    lockScroll();
+    requestAnimationFrame(() => overlay.classList.add("on"));
+    let done = false;
+    const close = (val) => {
+      if (done) return; done = true;
+      overlay.classList.remove("on");
+      document.removeEventListener("keydown", onKey, true);
+      setTimeout(() => { overlay.remove(); unlockScroll(); }, 260);
+      resolve(val);
+    };
+    const onKey = (ev) => {
+      if (ev.key === "Escape") { ev.preventDefault(); close(false); }
+      else if (ev.key === "Enter") { ev.preventDefault(); close(true); }
+    };
+    document.addEventListener("keydown", onKey, true);
+    overlay.querySelector(".ok").onclick = () => close(true);
+    overlay.querySelector(".cancel").onclick = () => close(false);
+    overlay.addEventListener("mousedown", (ev) => { if (ev.target === overlay) close(false); });
+  });
+}
 
 // 重命名：自定义模态输入 → 写 localStorage 即时生效（跨所有日期同源共享），
 // 并在控制台打印 --rename 命令用于永久固化（换设备/清缓存仍保留）。
@@ -1159,7 +1643,7 @@ function relayout() {
   stage.style.transition = lane0.style.transition = "width .9s cubic-bezier(.2,.8,.2,1)";
   stage.style.width = stageW + "px";
   lane0.style.width = (stageW + 14) + "px";
-  drawLink();
+  trackLink(1000);  // 列收缩平移动画(.9s)期间持续重算连线
 }
 
 function closeDetail() {
@@ -1188,7 +1672,9 @@ function select(i, node) {
   // 首框：标题单独拎出置顶（无标题时回退为会话名），其下会话头 + 跨日标注
   const titleText = e.title ? esc(e.title) : autoName(s);
   const headInner =
-    `<div class="d-title">${titleText}</div>`
+    `<div class="d-actions"><button class="d-act" data-act="edit" title="编辑标题与正文">✏️ 编辑</button>`
+    + `<button class="d-act danger" data-act="delete" title="删除本条日志">🗑️ 删除</button></div>`
+    + `<div class="d-title">${titleText}</div>`
     + `<div class="d-head"><span class="d-emo">${e.emoji}</span><span class="d-who" data-sid="${esc(s.id)}">${displayNameHtml(s)}</span><span class="d-seq">#${e.seq != null ? e.seq : i + 1}</span></div>`
     + carryNote;
 
@@ -1217,7 +1703,50 @@ function select(i, node) {
 
   document.getElementById("detailwrap").innerHTML = html;
   renderMermaid(document.getElementById("detailwrap"));  // 渲染本条日志内的 mermaid 图
-  drawLink();
+  renderMath(document.getElementById("detailwrap"));      // 渲染本条日志内的 LaTeX 公式
+  // 绑定编辑/删除操作（操作对原始条目 e，落盘命令按 date#seq 定位）
+  const wrap = document.getElementById("detailwrap");
+  const btnEdit = wrap.querySelector('.d-act[data-act="edit"]');
+  const btnDel = wrap.querySelector('.d-act[data-act="delete"]');
+  if (btnEdit) btnEdit.onclick = () => editEntry(e);
+  if (btnDel) btnDel.onclick = () => deleteEntry(e);
+  trackLink(1000);  // 详情框 fadein + 节点 pop 动画期间持续重算连线，避免停在旧位置
+}
+
+// 节点悬停气泡：单例 body 级元素，按节点屏幕位置摆在其正上方（夹取进视口避免溢出）。
+// 悬停需停留 ~0.5s 才弹出（防止划过时频繁闪现）；移出或滚动立即取消并隐藏。
+let _nodeTipEl = null, _nodeTipTimer = 0;
+function scheduleNodeTip(node) {
+  clearTimeout(_nodeTipTimer);
+  _nodeTipTimer = setTimeout(() => showNodeTip(node), 500);
+}
+function cancelNodeTip() {
+  clearTimeout(_nodeTipTimer);
+  hideNodeTip();
+}
+function showNodeTip(node) {
+  const text = node.dataset.tip || "";
+  if (!text) return;
+  if (!_nodeTipEl) {
+    _nodeTipEl = document.createElement("div");
+    _nodeTipEl.className = "node-tip";
+    document.body.appendChild(_nodeTipEl);
+  }
+  const tip = _nodeTipEl;
+  tip.textContent = text;
+  const r = node.getBoundingClientRect();
+  // 先显示以便测量自身尺寸，再夹取定位
+  tip.style.left = "0px"; tip.style.top = "0px";
+  tip.classList.add("on");
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let x = r.left + r.width / 2 - tw / 2;
+  let y = r.top - th - 10;                       // 默认置于节点上方
+  if (y < 6) y = r.bottom + 10;                  // 顶部空间不足则翻到下方
+  x = Math.max(6, Math.min(x, window.innerWidth - tw - 6));
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+function hideNodeTip() {
+  if (_nodeTipEl) _nodeTipEl.classList.remove("on");
 }
 
 function drawLink() {
@@ -1235,6 +1764,20 @@ let _linkRaf = 0;
 function scheduleDrawLink() {
   if (_linkRaf) return;
   _linkRaf = requestAnimationFrame(() => { _linkRaf = 0; drawLink(); });
+}
+// 选中/重排后，详情框 fadein(~.84s) 与节点 pop/translate(~.9s) 持续改变端点坐标，
+// 但 drawLink 仅在 scroll/resize 触发，动画期间连线会停在旧位置——玻璃主题尤甚（还叠加
+// 背景流动重排）。这里在动画时长内每帧重算一次，让连线实时贴合两端，动画结束即停。
+let _trackUntil = 0, _trackRaf = 0;
+function trackLink(ms = 1000) {
+  _trackUntil = Math.max(_trackUntil, performance.now() + ms);
+  if (_trackRaf) return;
+  const step = () => {
+    drawLink();
+    if (performance.now() < _trackUntil && ACTIVE) { _trackRaf = requestAnimationFrame(step); }
+    else { _trackRaf = 0; }
+  };
+  _trackRaf = requestAnimationFrame(step);
 }
 
 function renderFooter() {
@@ -1272,7 +1815,7 @@ function syncTopbar() {
   document.documentElement.style.setProperty("--topbar-h", h + "px");
 }
 
-window.addEventListener("scroll", scheduleDrawLink, { passive: true });
+window.addEventListener("scroll", () => { scheduleDrawLink(); cancelNodeTip(); }, { passive: true });
 window.addEventListener("resize", () => { syncTopbar(); scheduleDrawLink(); });
 
 applyTheme();

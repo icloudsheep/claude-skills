@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<!-- ⚠️ 本文件由 scripts/build/build_template.py 从 scripts/src/ 各部件拼装而成，请勿手改。
+     改样式/逻辑请改 src/css/*.css、src/js/*.js 或 src/shell_*.html，再重跑 build_template.py。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 工作日志 · 时间线</title>
+<script>
+  // 尽早写入主题属性，避免首屏闪烁（FOUC）
+  try {
+    document.documentElement.setAttribute("data-style", localStorage.getItem("ai-log:style") || "glass");
+    document.documentElement.setAttribute("data-mode", localStorage.getItem("ai-log:mode") || "light");
+  } catch (e) {
+    document.documentElement.setAttribute("data-style", "glass");
+    document.documentElement.setAttribute("data-mode", "light");
+  }
+</script>
+<style>

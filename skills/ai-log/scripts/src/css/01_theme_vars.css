@@ -1,0 +1,74 @@
+  :root {
+    --panel: rgba(255,255,255,.5); --line: rgba(30,40,70,.16);
+    --txt: #1c2438; --dim: #5a6884;
+    --glass: rgba(255,255,255,.52); --topbar-h: 150px;
+    /* 液态玻璃统一配方：双层半透明渐变底 + 高亮描边 + 内反光，可复用 */
+    --lg-bg: linear-gradient(135deg, rgba(255,255,255,.6), rgba(255,255,255,.3));
+    --lg-border: 1px solid rgba(255,255,255,.7);
+    --lg-inset: inset 0 1px 0 rgba(255,255,255,.85), inset 0 -1px 3px rgba(120,140,200,.16);
+    --blur: 14px;                         /* 玻璃主题模糊量；非玻璃主题置 0 */
+    --title-color: #131a2c;
+    --font: -apple-system, "SF Pro", "PingFang SC", Segoe UI, sans-serif;
+    --bg-anim: huewash 40s ease-in-out infinite;  /* 仅玻璃流动；其余 none */
+  }
+
+  /* ── 明暗维度（data-mode） ───────────────────────────── */
+  html[data-mode="dark"] {
+    --line: rgba(180,195,235,.16); --txt: #e7ecf8; --dim: #9aa7c8;
+    --title-color: #f5f7fc;
+    --lg-bg: linear-gradient(135deg, rgba(26,32,52,.74), rgba(16,20,36,.6));
+    --lg-border: 1px solid rgba(150,170,225,.2);
+    --lg-inset: inset 0 1px 0 rgba(180,200,255,.14), inset 0 -1px 3px rgba(0,0,0,.45); }
+  /* 暗色：内层字段框 / mermaid 容器底色改为半透明浅色叠加，适配任意暗色主题（玻璃/拟态/报纸），
+     避免暗底上残留亮白块 */
+  html[data-mode="dark"] .f {
+    background: rgba(200,215,255,.07);
+    border-color: rgba(160,180,230,.16); box-shadow: inset 0 1px 0 rgba(200,215,255,.1); }
+  html[data-mode="dark"] .md .mermaid {
+    background: rgba(200,215,255,.06);
+    border-color: rgba(160,180,230,.16); box-shadow: inset 0 1px 0 rgba(200,215,255,.08); }
+  /* 暗色 toast：近不透明深底，避免透出明亮背景导致整体偏亮；并降饱和 */
+  html[data-mode="dark"] .toast {
+    background: linear-gradient(135deg, rgba(22,27,44,.96), rgba(14,18,32,.94));
+    backdrop-filter: blur(18px) saturate(120%); -webkit-backdrop-filter: blur(18px) saturate(120%); }
+  html[data-mode="dark"] .toast::before { display: none; }
+  html[data-mode="dark"][data-style="glass"] .box::before,
+  html[data-mode="dark"][data-style="glass"] .toast::before,
+  html[data-mode="dark"][data-style="glass"] .modal::before {
+    background: linear-gradient(to bottom, rgba(200,215,255,.06), transparent); }
+  /* 暗色：markdown 代码/引用底色反相为浅色微光，避免暗底上的黑块 */
+  html[data-mode="dark"] .md code, html[data-mode="dark"] .md pre {
+    background: rgba(200,215,255,.1); }
+  html[data-mode="dark"] .md blockquote { background: rgba(200,215,255,.07); }
+
+  /* ── 风格维度（data-style） ──────────────────────────── */
+  /* 拟态 Neumorphism：纯色背景 + 同色凸起阴影，无模糊、无流动 */
+  html[data-style="neumorphism"] {
+    --blur: 0px; --bg-anim: none;
+    --lg-bg: var(--neu-surface);
+    --lg-border: 1px solid transparent;
+    --lg-inset: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light);
+  }
+  html[data-style="neumorphism"][data-mode="light"] {
+    --neu-surface: #e6ebf5; --neu-dark: #c4ccdc; --neu-light: #ffffff;
+    --txt: #39435c; --dim: #6b7794; --line: rgba(60,72,110,.12); --title-color: #2b3550;
+  }
+  html[data-style="neumorphism"][data-mode="dark"] {
+    --neu-surface: #16181f; --neu-dark: #0c0d12; --neu-light: #24272f;
+    --txt: #dfe5f2; --dim: #97a2bd; --line: rgba(150,165,210,.12); --title-color: #eef1fa;
+  }
+  /* 报纸 Newspaper：纯色米/墨背景 + 楷体 + 硬边框，无模糊无流动 */
+  html[data-style="newspaper"] {
+    --blur: 0px; --bg-anim: none;
+    --font: "Kaiti SC", "STKaiti", "楷体", "KaiTi", "Kaiti TC", "BiauKai", serif;
+    --lg-bg: var(--np-surface); --lg-border: 1px solid var(--np-rule);
+    --lg-inset: none;
+  }
+  html[data-style="newspaper"][data-mode="light"] {
+    --np-surface: #f4efe3; --np-rule: #2b2620; --txt: #211c16; --dim: #5c5347;
+    --line: #2b2620; --title-color: #1a1610;
+  }
+  html[data-style="newspaper"][data-mode="dark"] {
+    --np-surface: #0e0d0a; --np-rule: #cabfa6; --txt: #ece4d2; --dim: #a89c84;
+    --line: #4a4538; --title-color: #f3ecda;
+  }

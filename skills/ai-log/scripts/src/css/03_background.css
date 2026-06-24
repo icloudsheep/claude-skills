@@ -1,0 +1,27 @@
+
+  /* 背景：明亮多彩交融流动（仅玻璃主题）。用 transform 平移+旋转超大渐变层（GPU 可合成），
+     替代 background-position 动画（后者每帧 CPU 重绘全屏，是滚动顿挫主因）。 */
+  .bg { position: fixed; inset: 0; z-index: -3; overflow: hidden; }
+  .bg::before { content: ""; position: absolute; top: -75%; left: -75%; width: 250%; height: 250%;
+    background: linear-gradient(125deg, #ff9eb3, #ffd17a, #9ee6c4, #8ec5ff, #c5a3ff, #ff9ed6, #ffd17a, #9ee6c4, #ff9eb3);
+    will-change: transform; transform: translate3d(0,0,0);
+    animation: var(--bg-anim); }
+  /* 暗色玻璃：背景压暗 */
+  html[data-mode="dark"][data-style="glass"] body { background: #11162a; }
+  html[data-mode="dark"][data-style="glass"] .bg::before { filter: saturate(.8) brightness(.5); }
+  html[data-mode="dark"][data-style="glass"] .bg::after {
+    background: radial-gradient(760px 560px at 12% -10%, rgba(120,140,220,.25), transparent 60%),
+                radial-gradient(820px 600px at 90% 110%, rgba(180,120,220,.2), transparent 62%); }
+  .bg::after { content: ""; position: absolute; inset: 0;
+    background: radial-gradient(760px 560px at 12% -10%, rgba(255,255,255,.5), transparent 60%),
+                radial-gradient(820px 600px at 90% 110%, rgba(255,210,150,.42), transparent 62%),
+                radial-gradient(700px 520px at 80% 8%, rgba(150,210,255,.4), transparent 60%); }
+
+  /* GPU 合成的平移+旋转动画：只动 transform，不触发重绘/重排，幅度够大以呈现明显流动 */
+  @keyframes huewash {
+    0%   { transform: translate3d(-30%, -20%, 0) rotate(0deg); }
+    25%  { transform: translate3d(20%, -10%, 0) rotate(8deg); }
+    50%  { transform: translate3d(30%, 20%, 0) rotate(0deg); }
+    75%  { transform: translate3d(-15%, 15%, 0) rotate(-8deg); }
+    100% { transform: translate3d(-30%, -20%, 0) rotate(0deg); }
+  }
