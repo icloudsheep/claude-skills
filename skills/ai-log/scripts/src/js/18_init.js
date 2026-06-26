@@ -4,5 +4,6 @@ window.addEventListener("resize", () => { syncTopbar(); scheduleDrawLink(); });
 
 applyTheme();
 build();
+mountSearch();
 syncTopbar();
 checkUpdate();

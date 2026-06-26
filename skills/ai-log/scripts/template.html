@@ -509,6 +509,70 @@
   @keyframes draw { to{stroke-dashoffset:0} }
   @keyframes fadein { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
   @media (prefers-reduced-motion: reduce) { *{animation:none !important} }
+
+  /* ── 全文搜索 ─────────────────────────────────────────── */
+  /* 固定在页面右上角，与大标题平行；上、右边距相等。默认折叠为圆形图标，点击展开。 */
+  .search { position: fixed; top: 20px; right: 20px; z-index: 40; }
+  .search-bar { display: flex; align-items: center; gap: 0;
+    background: var(--lg-bg); border: var(--lg-border); border-radius: 999px;
+    backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%);
+    box-shadow: 0 8px 22px -10px rgba(40,50,90,.4), var(--lg-inset);
+    overflow: hidden; transition: gap .3s; }
+  /* 图标按钮：折叠态是 40px 圆形点击区 */
+  .search-ico { flex: none; width: 40px; height: 40px; border: none; background: transparent;
+    cursor: pointer; font-size: 16px; line-height: 1; color: var(--txt);
+    display: grid; place-items: center; transition: background .15s; }
+  .search-ico:hover { background: rgba(110,168,254,.16); }
+  /* 输入框：折叠态宽度 0、不可见；展开态张开 */
+  .search-input { width: 0; padding: 0; border: none; outline: none; background: transparent;
+    font: inherit; font-size: 13.5px; color: var(--txt);
+    opacity: 0; transition: width .3s cubic-bezier(.2,.8,.2,1), opacity .25s, padding .3s; }
+  .search-input::placeholder { color: var(--dim); opacity: .7; }
+  .search-clear { flex: none; border: none; background: transparent; cursor: pointer; color: var(--dim);
+    font-size: 13px; width: 0; opacity: 0; padding: 0; border-radius: 999px;
+    transition: width .2s, opacity .2s, background .15s, color .15s; overflow: hidden; }
+  .search-clear:hover { background: rgba(110,168,254,.16); color: var(--txt); }
+  /* 展开态：输入框张开到固定宽度（窄屏自适应），清空键出现 */
+  .search.open .search-bar { padding-right: 6px; }
+  .search.open .search-input { width: min(46vw, 300px); opacity: 1; padding: 0 8px 0 4px; }
+  .search.open .search-clear { width: 26px; height: 26px; opacity: 1; display: grid; place-items: center; }
+
+  /* 结果浮层：贴搜索框下方、右对齐，独立滚动 */
+  .search-results { position: absolute; top: calc(100% + 8px); right: 0; width: min(92vw, 420px);
+    z-index: 41; max-height: min(64vh, 540px); overflow-y: auto; padding: 6px;
+    background: var(--lg-bg); border: var(--lg-border); border-radius: 14px;
+    backdrop-filter: blur(22px) saturate(185%); -webkit-backdrop-filter: blur(22px) saturate(185%);
+    box-shadow: 0 18px 44px -16px rgba(40,50,90,.5), var(--lg-inset); }
+  .search-results::-webkit-scrollbar { width: 9px; }
+  .search-results::-webkit-scrollbar-thumb { background: rgba(60,72,110,.32); border-radius: 9px; }
+  html[data-mode="dark"] .search-results::-webkit-scrollbar-thumb { background: rgba(180,195,235,.3); }
+  .search-count, .search-empty { font-size: 11.5px; color: var(--dim); padding: 6px 10px; }
+  .search-empty { text-align: center; padding: 18px 10px; }
+
+  /* 单条结果 */
+  .search-item { padding: 10px 12px; border-radius: 10px; cursor: pointer;
+    margin-bottom: 4px; transition: background .15s; }
+  .search-item:hover { background: rgba(110,168,254,.12); }
+  .sr-head { display: flex; align-items: center; gap: 8px; }
+  .sr-emo { font-size: 15px; }
+  .sr-title { font-size: 14px; font-weight: 650; color: var(--title-color);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .sr-seq { font-size: 11px; color: var(--dim); border: 1px solid var(--line); padding: 1px 7px; border-radius: 999px; }
+  .sr-meta { font-size: 11.5px; color: var(--dim); margin: 3px 0 5px; }
+  .sr-hit { font-size: 12.5px; color: var(--txt); line-height: 1.5; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+  .sr-field { display: inline-block; font-size: 10.5px; color: var(--dim);
+    background: rgba(110,168,254,.14); border-radius: 5px; padding: 0 6px; margin-right: 6px; }
+  .search mark, .sr-hit mark { background: color-mix(in srgb, #ffd166 70%, transparent);
+    color: inherit; border-radius: 3px; padding: 0 1px; }
+  html[data-mode="dark"] .search mark { background: color-mix(in srgb, #ffd166 40%, transparent); }
+
+  /* 命中节点闪烁高亮（搜索结果点击后） */
+  @keyframes node-flash {
+    0%, 100% { box-shadow: 0 0 0 0 transparent; }
+    30% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--c) 45%, transparent); }
+  }
+  #stage .node.flash .knob { animation: node-flash 1.1s ease-out 2; }
 </style>
 </head>
 <body>
@@ -703,8 +767,13 @@ function renderMd(src) {
 // 库可能异步到达（本地或 CDN 回退）。就绪前先记一个 pending 标记，
 // 到位后初始化并补渲染当前详情面板里的 .mermaid 图。
 let _mermaidInited = false, _mermaidPending = false;
+// 确保 mermaid 已初始化，返回「现在是否可用于渲染」：
+// 已初始化 → 直接 true；未初始化但库已到 → 初始化后 true；库未到 → false。
+// 注意：不能写成「if (_mermaidInited) return false」——那会让已就绪的库被误判为不可用，
+// 导致除首次外每次渲染都被跳过（首次成功、后续必败、刷新重置的根因）。
 function initMermaid() {
-  if (_mermaidInited || typeof window.mermaid === "undefined") return false;
+  if (_mermaidInited) return true;
+  if (typeof window.mermaid === "undefined") return false;
   try {
     window.mermaid.initialize({ startOnLoad: false, securityLevel: "loose",
       theme: "neutral",
@@ -1606,7 +1675,7 @@ function checkUpdate() {
       const latest = rel.tag_name || "";
       if (latest && latest !== ver.version) {
         showToast(`新版本 ${latest}（当前 ${ver.version}），点击前往更新`,
-          { title: "🎉 发现更新", onClick: () => window.open(rel.html_url || repo, "_blank", "noopener"), duration: 0 });
+          { title: "🎉 发现更新", onClick: () => window.open(rel.html_url || repo, "_blank", "noopener"), duration: 10000 });
       }
     })
     .catch((e) => {
@@ -1814,12 +1883,149 @@ function syncTopbar() {
   const h = document.getElementById("topbar").offsetHeight;
   document.documentElement.style.setProperty("--topbar-h", h + "px");
 }
+// ── 全文搜索 ───────────────────────────────────────────────────
+// 页面右上角常驻一个搜索图标（与大标题平行、上/右边距相等），点击展开搜索框；
+// 对当前 ENTRIES（已应用编辑覆盖层）的所有文字字段做大小写不敏感匹配；
+// 结果以列表浮层给出，每项含节点主信息 + 命中文本片段（高亮关键词）；
+// 点击结果在主页展开该节点（select），并滚动到可视区、短暂高亮闪烁。
+
+// 参与搜索的字段及其中文名（用于结果里标注命中位置）
+const SEARCH_FIELDS = [
+  ["title", "标题"], ["summary", "正文"], ["project", "项目"],
+  ["branch", "分支"], ["model", "模型"], ["cwd", "目录"],
+];
+
+// 挂载搜索控件——固定在 body 右上角，只挂一次（build 重建 topbar 不影响它）。
+// 默认折叠为图标，点击展开输入框；再次点击图标或点击外部收起。
+function mountSearch() {
+  if (document.getElementById("search")) return;  // 已挂载，避免 rebuild 重复
+  const box = document.createElement("div");
+  box.className = "search"; box.id = "search";
+  box.innerHTML =
+    `<div class="search-bar">`
+    + `<button class="search-ico" title="搜索日志">🔍</button>`
+    + `<input class="search-input" type="text" placeholder="搜索标题、正文、项目、分支……" spellcheck="false" />`
+    + `<button class="search-clear" title="清空" hidden>✕</button>`
+    + `</div>`
+    + `<div class="search-results" hidden></div>`;
+  document.body.appendChild(box);
+
+  const ico = box.querySelector(".search-ico");
+  const input = box.querySelector(".search-input");
+  const clear = box.querySelector(".search-clear");
+  const results = box.querySelector(".search-results");
+
+  const closeResults = () => { results.hidden = true; results.innerHTML = ""; };
+  const expand = () => {
+    box.classList.add("open");
+    setTimeout(() => input.focus(), 60);
+    if (input.value.trim()) update();
+  };
+  const collapse = () => { box.classList.remove("open"); closeResults(); };
+
+  const update = () => {
+    const q = input.value.trim();
+    clear.hidden = !q;
+    if (!q) { closeResults(); return; }
+    runSearch(q, results);
+  };
+
+  ico.onclick = (e) => { e.stopPropagation(); box.classList.contains("open") ? collapse() : expand(); };
+  input.addEventListener("input", update);
+  clear.onclick = () => { input.value = ""; clear.hidden = true; closeResults(); input.focus(); };
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { input.value = ""; clear.hidden = true; collapse(); }
+  });
+  // 点击控件外部：收起整个搜索框
+  document.addEventListener("click", (e) => { if (!box.contains(e.target)) collapse(); }, true);
+}
+
+// 执行搜索：遍历 ENTRIES 各字段，命中则记录字段名与命中片段；渲染结果列表。
+function runSearch(q, results) {
+  const ql = q.toLowerCase();
+  const hits = [];
+  ENTRIES.forEach((e, i) => {
+    const s = META[e.id];
+    const matched = [];  // {field, snippet}
+    for (const [key, label] of SEARCH_FIELDS) {
+      const val = e[key];
+      if (!val) continue;
+      const idx = String(val).toLowerCase().indexOf(ql);
+      if (idx >= 0) matched.push({ label, snippet: makeSnippet(String(val), idx, q.length) });
+    }
+    // 会话名（自动代号 + 别名）也参与匹配
+    const nm = (aliasOf(e.id) || "") + " " + autoName(s);
+    if (nm.toLowerCase().includes(ql)) matched.push({ label: "会话", snippet: esc(aliasOf(e.id) || autoName(s)) });
+    if (matched.length) hits.push({ i, e, s, matched });
+  });
+
+  if (!hits.length) {
+    results.hidden = false;
+    results.innerHTML = `<div class="search-empty">未找到包含「${esc(q)}」的日志</div>`;
+    return;
+  }
+  results.hidden = false;
+  results.innerHTML =
+    `<div class="search-count">${hits.length} 条匹配</div>`
+    + hits.map((h) => {
+        const title = h.e.title ? esc(h.e.title) : esc(autoName(h.s));
+        const fields = h.matched.map((m) =>
+          `<div class="sr-hit"><span class="sr-field">${m.label}</span>${m.snippet}</div>`).join("");
+        return `<div class="search-item" data-seq="${h.e.seq}" style="--c:${h.s.color}">`
+          + `<div class="sr-head"><span class="sr-emo">${h.e.emoji}</span>`
+          + `<span class="sr-title">${title}</span>`
+          + `<span class="sr-seq">#${h.e.seq}</span></div>`
+          + `<div class="sr-meta">${esc(displayNamePlain(h.s))} · ${esc(fmtAt(h.e.start, h.e.carryover ? h.e.carryover.prev_date : DATA.date))}</div>`
+          + fields
+          + `</div>`;
+      }).join("");
+
+  results.querySelectorAll(".search-item").forEach((el) => {
+    el.onclick = () => openSearchResult(+el.dataset.seq);
+  });
+}
+
+// 取命中位置周围一小段文本作为片段，关键词高亮；首尾按需加省略号。
+function makeSnippet(text, idx, qlen) {
+  const PAD = 30;
+  const start = Math.max(0, idx - PAD);
+  const end = Math.min(text.length, idx + qlen + PAD);
+  const pre = (start > 0 ? "…" : "") + text.slice(start, idx);
+  const mid = text.slice(idx, idx + qlen);
+  const post = text.slice(idx + qlen, end) + (end < text.length ? "…" : "");
+  // 片段里去掉换行让其单行展示
+  const clean = (s) => esc(s.replace(/\s+/g, " "));
+  return clean(pre) + `<mark>${clean(mid)}</mark>` + clean(post);
+}
+
+// 会话名纯文本（无 HTML），用于结果元信息行
+function displayNamePlain(s) {
+  const alias = aliasOf(s.id);
+  return alias ? `${alias}(${autoName(s)})` : autoName(s);
+}
+
+// 点击搜索结果：在主页展开对应节点（按 seq 定位节点 → select），滚动到可视区并闪烁高亮。
+function openSearchResult(seq) {
+  const node = document.querySelector(`#stage .node[data-seq="${seq}"]`);
+  if (!node) return;
+  // 若该节点所属会话被隐藏，先显示它
+  const s = META[node.dataset.sid];
+  if (s && s.hidden) {
+    const chip = document.querySelector(`.chip[data-sid="${cssEsc(node.dataset.sid)}"]`);
+    if (chip) toggleSession(node.dataset.sid, chip);
+  }
+  select(+node.dataset.i, node);
+  // 滚动左栏让节点可见 + 闪烁
+  node.scrollIntoView({ behavior: "smooth", block: "center" });
+  node.classList.remove("flash"); void node.offsetWidth; node.classList.add("flash");
+}
 
 window.addEventListener("scroll", () => { scheduleDrawLink(); cancelNodeTip(); }, { passive: true });
 window.addEventListener("resize", () => { syncTopbar(); scheduleDrawLink(); });
 
 applyTheme();
 build();
+mountSearch();
 syncTopbar();
 checkUpdate();
 </script>

@@ -44,7 +44,7 @@ function checkUpdate() {
       const latest = rel.tag_name || "";
       if (latest && latest !== ver.version) {
         showToast(`新版本 ${latest}（当前 ${ver.version}），点击前往更新`,
-          { title: "🎉 发现更新", onClick: () => window.open(rel.html_url || repo, "_blank", "noopener"), duration: 0 });
+          { title: "🎉 发现更新", onClick: () => window.open(rel.html_url || repo, "_blank", "noopener"), duration: 10000 });
       }
     })
     .catch((e) => {
