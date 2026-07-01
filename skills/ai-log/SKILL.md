@@ -1,6 +1,6 @@
 ---
 name: ai-log
-description: 记录 AI 工作日志。当用户发送「记录日志」「记一下日志」「log 一下」等指令时使用，自动为本次工作拟一个标题（≤25字）并总结上一次记录至今的内容（正文默认 2000 字内，可以用 markdown、mermaid 图与 LaTeX 公式），写入按天目录 {保存目录}/{YYYY-MM-DD}/ 下的 data.json 与可视化 index.html。自动统计本段 token 与对话轮数；跨午夜接续会自动存入新一天并标注；网页可右键胶囊给会话自定义名称（跨所有日期生效），也可在详情面板/节点右键菜单编辑、删除、预览日志条目。另有 full 模式（`/ai-log full` 或「按主题/按每轮总结所有对话」）：回看整段对话、按用户所选颗粒度（主题或轮次）划分，一次产出多条日志（节点带 🚀 角标），更耗 token，须先获用户许可并选颗粒度与数据来源。保存目录由配置决定，首次使用会询问用户是否永久指定。
+description: 记录 AI 工作日志。当用户发送「记录日志」「记一下日志」「log 一下」等指令时使用，自动为本次工作拟一个标题（≤25字）并总结上一次记录至今的内容（正文默认 2000 字内，可以用 markdown、mermaid 图与 LaTeX 公式），写入按天目录 {保存目录}/{YYYY-MM-DD}/ 下的 data.json 与可视化 index.html。自动统计本段 token 与对话轮数；跨午夜接续会自动存入新一天并标注；网页可右键胶囊给会话自定义名称（跨所有日期生效），也可在详情面板/节点右键菜单编辑、删除、预览日志条目。另有 full 模式（`/ai-log full` 或「按主题/按每轮总结所有对话」）：回看整段对话、按用户所选颗粒度（主题或轮次）划分，一次产出多条日志（节点带 🚀 角标），更耗 token，须先获用户许可并选颗粒度与数据来源。支持在线提交（`/ai-log online` 或「双提交」「在线提交」）：写完本地后 POST 到 Ailogy 后端。保存目录与提交地址由配置决定，首次使用会询问用户是否永久指定。
 metadata:
   short-description: 总结近期工作并按天追加写入本地 AI 工作日志
 ---
@@ -105,6 +105,66 @@ python3 <SKILL_DIR>/scripts/ai_logger.py --set-root "/your/chosen/dir" --title "
 ### 第 3 步：确认输出
 
 执行完成后**仅输出一句简短确认**（如「✅ 日志已保存」，可附 index.html 路径），禁止输出多余解释。若本次落在临时兜底目录，可顺带提醒一句「本次为临时位置，可随时永久指定」。
+
+## 在线提交（双模式）
+
+用户明确说「双提交」「在线提交」「同步到线上」、或输入 `/ai-log online` 时，在写完本地 data.json 之后 **额外 POST 到 Ailogy 后端**。
+
+### 提交目标（report_url）从哪来
+
+与保存目录管理机制一致，按以下优先级解析：
+
+1. 环境变量 `AILOG_REPORT_URL`（优先级最高）
+2. 配置文件 `~/.config/ai-log/config.json` 的 `report_url` 字段（永久，由 `--set-report-url` 写入）
+3. 兜底空字符串（不上报）
+
+**只需填根地址**（如 `https://ailogy.example.com`），**无需精确到具体 GET/POST 方法**——脚本自动拼 `/api/ingest/entries`。
+
+### 配置流程
+
+```bash
+# 永久指定提交地址（写入 config.json，之后每次 --report 自动用）
+python3 <SKILL_DIR>/scripts/ai_logger.py --set-report-url https://ailogy.example.com
+
+# 查看当前配置（--status 输出含 report_url 字段）
+python3 <SKILL_DIR>/scripts/ai_logger.py --status
+# → {"configured": true, "root": "...", "report_url": "https://ailogy.example.com", ...}
+```
+
+### 触发方式
+
+用户在对话中说「双提交」「在线提交」、或用 `/ai-log online` 时，在记录日志的命令中追加 `--report`：
+
+```bash
+python3 <SKILL_DIR>/scripts/ai_logger.py --report --title "标题" --summary "$SUMMARY"
+```
+
+### 上报行为
+
+- 上报是**尽力而为**：成功打印 `📤 已在线提交至 <url>`，失败打印 `⚠️ 在线提交失败（本地已保存）：<错误>`，**不阻断本地写入**。
+- 未配置 `report_url` 时带 `--report` 会提示 `⚠️ 已要求在线提交但未配置提交地址`，建议用户先 `--set-report-url`。
+- 无 `--report` 时不触发上报（默认行为不变）。
+
+> ⚠️ **仅当用户明确要求时才加 --report**。普通「记录日志」不加此参数——不自动上报。
+
+### 设备标识（device）
+
+每条上报会带上**设备名**，后端据此提供「按设备筛选」。设备名解析优先级：
+
+1. 环境变量 `AILOG_DEVICE`
+2. 配置文件 `~/.config/ai-log/config.json` 的 `device` 字段
+3. 兜底主机名（`socket.gethostname()` 的首段）
+
+**首次在线提交前必须确认设备名（强制）**：当用户首次要 `--report`、且 `config.json` 中**尚无 `device` 字段**时，**先用 AskUserQuestion 询问用户本机的设备名**（给出主机名作为默认建议），然后用 `--set-device <名称>` 写入配置：
+
+```bash
+# 首次确认设备名（写入 config.json）
+python3 <SKILL_DIR>/scripts/ai_logger.py --set-device "我的 MacBook"
+```
+
+- 若用户接受默认主机名，仍写入配置以固定（避免主机名变动导致设备漂移）。
+- **主机名可能在多机间重复**：若用户有多台同名机器，提醒其各自指定不同设备名（如加后缀），避免数据混在一起。
+- 一旦 `device` 已配置，后续 `--report` 不再询问。
 
 ## full 模式（整段对话回溯总结）
 

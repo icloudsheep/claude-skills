@@ -11,16 +11,17 @@
 | [`code-comment`](skills/code-comment) | 代码注释规范：注释权责对齐当前作用域，不向上溯源调用链、不向下探索消费方、阶段性现状带时间戳、不写行号、不脑补业务 | 写 / 改任何代码注释（javadoc、行内、字段、测试注释）前 |
 | [`code-review`](skills/code-review) | 提交前代码审查：按本次 diff 逐项查拼写、log 合理性（B 端关键节点合理打 / C 端校验失败不打）、注释、commit message、参数校验与边界；下游调 `code-comment`，可被 `git-commit` 触发 | 提交代码前 / 写 commit / push 前 |
 | [`git-commit`](skills/git-commit) | Git 提交规范：基于 Conventional Commits，覆盖 type 选择、subject/body/footer 写法、`-F` 文件提交、精确暂存、amend 与强推安全、分支命名 | 写 commit message / 建分支 / push 前 |
-| [`ai-log`](skills/ai-log) | 记录 AI 工作日志并生成可视化时间线：总结上次记录至今的工作写入按天 `data.json` 与离线 `index.html`；支持 markdown / mermaid、自动统计 token 与轮数、跨午夜接续、会话自定义名、六套主题、关于弹窗与在线更新检查；另有按主题 / 按轮次回溯整段对话的 full 模式 | 收到「记录日志」「log 一下」类指令，或 `/ai-log full` 时 |
+| [`ai-log`](skills/ai-log) | 记录 AI 工作日志并生成可视化时间线：总结上次记录至今的工作写入按天 `data.json` 与离线 `index.html`；支持 markdown / mermaid / LaTeX、自动统计 token 与轮数、跨午夜接续、会话自定义名、条目编辑/删除/预览、多套主题；另有按主题 / 按轮次回溯整段对话的 full 模式；可选在线上报到 [Ailogy](https://github.com/icloudsheep/Ailogy) 服务做多设备聚合 | 收到「记录日志」「log 一下」类指令，或 `/ai-log full`、`/ai-log online` 时 |
 
 ## 新功能
 
 ![ai-log 功能展示](static/ai-log-showcase.svg)
 
-`ai-log` 近期一轮增强（详见 [skills/ai-log](skills/ai-log)）：
+`ai-log` 近期增强（详见 [skills/ai-log](skills/ai-log)）：
 
+- **在线上报（双提交）**：`/ai-log online` 或「双提交」触发，写完本地后 POST 到 [Ailogy](https://github.com/icloudsheep/Ailogy) 后端，多台设备汇聚到一个库。每条带 `device` 设备字段，首次上报前会确认设备名；提交地址与设备名经 `--set-report-url` / `--set-device` 写入配置，尽力而为、失败不阻断本地写入。
 - **LaTeX 公式**：日志正文支持 `$行内$` 与 `$$块级$$` 公式，内置 KaTeX 本地副本，离线可用、加载失败回退 CDN。
-- **条目编辑 / 删除 / 预览**：详情面板与节点右键菜单可编辑（Markdown 源码框）、删除、预览任意一条；改动即时写 `localStorage`、控制台同时打印永久落盘命令（脚本侧 `--edit` / `--delete` / `--rerender`）。编辑为原地更新、删除为节点平滑移除，不再整页重建。
+- **条目编辑 / 删除 / 预览**：详情面板与节点右键菜单可编辑（Markdown 源码框）、删除、预览任意一条；本地模式改动写 `localStorage` 并打印永久落盘命令（`--edit` / `--delete`），编辑原地更新、删除节点平滑移除，不整页重建。
 - **节点悬停气泡**：鼠标停留即显示该条标题，快速浏览时间线。
 - **渲染稳定性**：修复 mermaid 偶发渲染失败、玻璃主题连接线刷新、模态打开时吸顶头部消失、暗色编辑框可读性等问题。
 
@@ -116,6 +117,19 @@ ln -s "$PWD/skills/ai-log"       ~/.claude/skills/ai-log
 
 - `CLAUDE_CODE_SESSION_ID`：派生稳定的会话代号（同会话恒定）。
 - `ANTHROPIC_MODEL`：记录当前模型名（可选）。
+- `AILOG_REPORT_URL` / `AILOG_DEVICE`：在线上报到 [Ailogy](https://github.com/icloudsheep/Ailogy) 时的目标地址与本机设备名（也可由 `--set-report-url` / `--set-device` 写入 config.json）。
+
+### 在线上报到 Ailogy（可选）
+
+`ai-log` 默认纯本地。若想把多台设备的日志汇聚到一处并用网页瀑布流浏览，可部署 [Ailogy](https://github.com/icloudsheep/Ailogy) 服务，并在 CLI 侧配置上报地址与设备名：
+
+```bash
+ai_logger.py --set-report-url http://127.0.0.1:8000   # 上报地址（只需根地址）
+ai_logger.py --set-device "我的 MacBook"               # 设备名（多设备区分来源）
+ai_logger.py --report --title "..." --summary "..."   # 记一条并上报（本地仍照写）
+```
+
+上报是尽力而为，失败不阻断本地写入。详见 [skills/ai-log](skills/ai-log) 与 Ailogy 仓库。
 
 ## 许可证
 
