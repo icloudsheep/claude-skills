@@ -2,6 +2,12 @@
 
 记录 AI 工作日志 skill。把「上次记录到现在」的工作内容总结后，追加写入按天目录的结构化数据与可视化时间线；可选在线上报到 [Ailogy](https://github.com/icloudsheep/Ailogy) 服务做多设备聚合。
 
+> **职责边界**：ai-log 是**客户端**，专职「记录日志 + 本地离线渲染 +（可选）推送云端」，自包含、可独立使用；[Ailogy](https://github.com/icloudsheep/Ailogy) 是**纯后端**，只负责收集 / 存储 / 网页呈现多设备汇聚的日志，自身不产生日志。二者靠 ai-log 侧配置的 `report_url` 单向对接：
+> - **只装 ai-log**：全功能本地离线，双击 HTML 即看，无需任何服务。
+> - **ai-log 配了云端地址 + Ailogy 后端在跑**：本地 + 云端双写。
+>
+> 云端地址配在 ai-log 自己的 `config.json`（`report_url`），**不在 Ailogy 的 `.env` 里**——谁记日志谁决定往哪推。
+
 ## 适用场景
 
 收到「记录日志」「记一下日志」「log 一下」类指令时触发。
@@ -37,6 +43,8 @@ ai_logger.py --set-report-url http://127.0.0.1:8000   # 永久指定上报地址
 ai_logger.py --set-device "我的 MacBook"               # 永久指定设备名
 ai_logger.py --report --title "..." --summary "..."   # 记一条并上报
 ```
+
+**想启用云端的操作顺序**：① 先把 Ailogy 后端跑起来（见其 README）；② 在本机 ai-log 侧 `--set-report-url` 指到该服务根地址、`--set-device` 起个设备名；③ 之后记日志时带 `--report`（或说「双提交」）即双写。未配 `report_url` 时带 `--report` 只提示未配置、不报错；配了但后端没起则本地照存、上报失败仅告警——本地写入永不受影响。
 
 ## 工作流程
 
