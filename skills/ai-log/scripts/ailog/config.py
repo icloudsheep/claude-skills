@@ -1,6 +1,7 @@
 """配置文件与保存目录（root）解析。
 
 保存目录优先级：--root 显式 > ~/.config/ai-log/config.json > 兜底 ~/.cache/ai-log。
+在线提交目标（report_url）优先级：--report-url 显式 > 环境变量 AILOG_REPORT_URL > config.json。
 ~/.config 与 ~/.cache 分别尊重 XDG_CONFIG_HOME / XDG_CACHE_HOME 环境变量。
 """
 import json
@@ -53,3 +54,39 @@ def resolve_root(cli_root):
     if cfg.get("root"):
         return os.path.abspath(os.path.expanduser(cfg["root"])), "config"
     return cache_root(), "cache"
+
+
+# ── 在线提交目标（report_url）──
+# 优先级：--report-url 显式 > 环境变量 AILOG_REPORT_URL > config.json 的 report_url > 空（不上报）
+def resolve_report_url(cli_report_url=None):
+    """按优先级解析在线提交目标 URL，返回字符串（可能为空）。
+
+    只需填根地址，如 https://ailogy.icloudsheep.top，不用精确到具体方法。
+    空字符串表示不上报。
+    """
+    if cli_report_url:
+        return cli_report_url.rstrip("/")
+    env = os.environ.get("AILOG_REPORT_URL", "").strip()
+    if env:
+        return env.rstrip("/")
+    cfg = load_config()
+    cfg_val = (cfg.get("report_url") or "").strip()
+    if cfg_val:
+        return cfg_val.rstrip("/")
+    return ""
+
+
+# ── 设备名（device）──
+# 优先级：环境变量 AILOG_DEVICE > config.json 的 device > 主机名兜底。
+def resolve_device():
+    """解析上报设备名。env > config > 主机名。"""
+    env = os.environ.get("AILOG_DEVICE", "").strip()
+    if env:
+        return env
+    cfg = load_config()
+    v = (cfg.get("device") or "").strip()
+    if v:
+        return v
+    import socket
+    return (socket.gethostname() or "unknown").split(".")[0]
+
