@@ -30,6 +30,7 @@ BUILD_ORDER = [
     "css/10_markdown.css",
     "css/11_footer.css",
     "css/12_keyframes.css",
+    "css/13_search.css",
     "shell_mid.html",
     "js/01_constants_utils.js",
     "js/02_aliases.js",
@@ -48,6 +49,7 @@ BUILD_ORDER = [
     "js/15_timeline_interact.js",
     "js/16_node_tip.js",
     "js/17_link_footer.js",
+    "js/19_search.js",
     "js/18_init.js",
     "shell_tail.html",
 ]
