@@ -2,8 +2,13 @@
 // 库可能异步到达（本地或 CDN 回退）。就绪前先记一个 pending 标记，
 // 到位后初始化并补渲染当前详情面板里的 .mermaid 图。
 let _mermaidInited = false, _mermaidPending = false;
+// 确保 mermaid 已初始化，返回「现在是否可用于渲染」：
+// 已初始化 → 直接 true；未初始化但库已到 → 初始化后 true；库未到 → false。
+// 注意：不能写成「if (_mermaidInited) return false」——那会让已就绪的库被误判为不可用，
+// 导致除首次外每次渲染都被跳过（首次成功、后续必败、刷新重置的根因）。
 function initMermaid() {
-  if (_mermaidInited || typeof window.mermaid === "undefined") return false;
+  if (_mermaidInited) return true;
+  if (typeof window.mermaid === "undefined") return false;
   try {
     window.mermaid.initialize({ startOnLoad: false, securityLevel: "loose",
       theme: "neutral",

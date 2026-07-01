@@ -20,18 +20,28 @@
     # 把当前模板重铺到所有历史日期页面（模板升级后用），并刷新资产软链
     python3 ai_logger.py --rerender
 
+    # 在线提交：同时 POST 到 Ailogy 后端
+    python3 ai_logger.py --summary "..." --report
+    python3 ai_logger.py --set-report-url https://ailogy.example.com
+
 保存目录（root）解析顺序:
     1. --root 显式指定（仅本次生效，不落盘为永久配置）
     2. 配置文件 ~/.config/ai-log/config.json 中的 "root"（永久，由 --set-root 写入）
     3. 兜底 ~/.cache/ai-log（临时位置；此时 --status 报告 configured=false）
     （~/.config 与 ~/.cache 分别尊重 XDG_CONFIG_HOME / XDG_CACHE_HOME 环境变量）
+
+在线提交目标（report_url）解析顺序:
+    1. --report-url 显式指定（仅本次生效？不，直接 --report 走配置）
+    2. 环境变量 AILOG_REPORT_URL
+    3. 配置文件 ~/.config/ai-log/config.json 中的 "report_url"（永久，由 --set-report-url 写入）
+    4. 兜底空字符串（不上报）
 """
 import argparse
 import json
 import os
 import sys
 
-from .config import config_path, load_config, resolve_root, save_config
+from .config import config_path, load_config, resolve_root, save_config, resolve_report_url
 from .entry import write_entry, edit_entry, delete_entry
 from .render import save_alias, aliases_js_path, link_skill_assets, rerender_all_days
 
@@ -62,20 +72,33 @@ def main():
     parser.add_argument("--rerender", action="store_true",
                         help="把当前模板重新铺到 <root> 下所有日期的 index.html（模板升级后用），"
                              "并刷新 version.js / mermaid / katex 软链；不改 data.json")
+    parser.add_argument("--report", action="store_true",
+                        help="本次同时在线提交到 Ailogy 后端（需先配置 report_url）")
+    parser.add_argument("--set-report-url", default=None, dest="set_report_url", metavar="URL",
+                        help="永久指定在线提交目标地址（如 https://ailogy.example.com），"
+                             "写入 ~/.config/ai-log/config.json")
+    parser.add_argument("--set-device", default=None, dest="set_device", metavar="NAME",
+                        help="永久指定上报设备名，写入 ~/.config/ai-log/config.json")
     args = parser.parse_args()
 
     # --status：仅报告，不写日志。供调用方判断是否需要询问用户永久位置。
     if args.status:
         root, source = resolve_root(None)
+        report_url = resolve_report_url()
+        from .config import resolve_device
+        cfg = load_config()
         print(json.dumps({
-            "configured": source == "config",   # 是否已永久指定
-            "source": source,                    # config / cache（status 下不会是 explicit）
+            "configured": source == "config",
+            "source": source,
             "root": root,
             "config_path": config_path(),
+            "report_url": report_url or None,
+            "device": resolve_device(),
+            "device_configured": bool((cfg.get("device") or "").strip()),
         }, ensure_ascii=False))
         return
 
-    # --rename：固化会话别名到 aliases.json 并刷新 aliases.js（所有日期页面刷新即生效，无需重渲染）。
+    # --rename：固化会话别名到 aliases.json 并刷新 aliases.js。
     if args.rename is not None:
         root, _src = resolve_root(args.root)
         cid, alias = args.rename[0].strip(), args.rename[1].strip()
@@ -118,10 +141,10 @@ def main():
             sys.exit(1)
         return
 
-    # --rerender：模板升级后，把新模板铺到所有历史日期页面，并刷新 root 根软链（含 katex）。
+    # --rerender：模板升级后，把新模板铺到所有历史日期页面。
     if args.rerender:
         root, _src = resolve_root(args.root)
-        link_skill_assets(root)   # 即便没有任何日期目录，也先建好 version/mermaid/katex 软链
+        link_skill_assets(root)
         n = rerender_all_days(root)
         print(f"♻️ 已用当前模板重渲染 {n} 个日期页面 -> {root}（刷新页面即生效）")
         return
@@ -134,17 +157,52 @@ def main():
         cfg["root"] = chosen_root
         save_config(cfg)
         print(f"📌 已永久指定日志保存目录：{chosen_root}")
+        if args.summary is None and not args.set_report_url and not args.set_device:
+            return
+
+    # --set-report-url：永久指定在线提交地址（可独立于日志写入，单独设置）
+    if args.set_report_url:
+        url = args.set_report_url.strip().rstrip("/")
+        cfg = load_config()
+        cfg["report_url"] = url
+        save_config(cfg)
+        print(f"🔗 已永久指定在线提交地址：{url}")
+        if args.summary is None and not args.set_device:
+            return
+
+    # --set-device：永久指定上报设备名
+    if args.set_device:
+        cfg = load_config()
+        cfg["device"] = args.set_device.strip()
+        save_config(cfg)
+        print(f"💻 已永久指定设备名：{cfg['device']}")
         if args.summary is None:
             return
 
     if args.summary is None:
-        parser.error("缺少 --summary（除非使用 --status 或仅 --set-root）")
+        parser.error("缺少 --summary（除非使用 --status 或仅 --set-root / --set-report-url / --set-device）")
 
     # 解析本次保存目录：--root / --set-root > config > cache 兜底
     root, source = resolve_root(args.root or chosen_root)
-    cn, codename_id, html_path = write_entry(root, args.summary, args.title, args.id, args.mode)
+    cn, codename_id, html_path, entry = write_entry(root, args.summary, args.title, args.id, args.mode)
 
     print(f"✅ 日志已保存（{cn['emoji']} {codename_id}）-> {html_path}")
     if source == "cache":
-        # 用了临时兜底目录，提示调用方下次仍可询问用户是否永久指定
         print(f"ℹ️ 当前为临时位置（未永久指定）：{root}", file=sys.stderr)
+
+    # 在线提交：仅在用户明确说「双提交」「在线提交」或带 /ai-log online / --report 时触发
+    if args.report:
+        report_url = resolve_report_url()
+        if not report_url:
+            print("⚠️ 已要求在线提交但未配置提交地址，请先用 --set-report-url <URL> 设置", file=sys.stderr)
+        else:
+            from .config import resolve_device
+            from .reporter import report_entry as do_report
+            entry = dict(entry, device=resolve_device())  # 注入设备名
+            ok = do_report(report_url, entry)
+            if ok:
+                print(f"📤 已在线提交至 {report_url}（设备 {entry['device']}）")
+
+
+if __name__ == "__main__":
+    main()
