@@ -52,6 +52,14 @@ def main():
     parser.add_argument("--title", default=None,
                         help="本条日志标题（建议 ≤30 字），在网页详情面板顶部单独展示")
     parser.add_argument("--id", default=None, help="可选，手动覆盖会话代号 name")
+    parser.add_argument("--platform", choices=["claude", "codex", "generic"], default=None,
+                        help="显式指定运行平台；通常自动探测")
+    parser.add_argument("--session-id", default=None,
+                        help="显式指定原始会话 ID（优先于平台环境变量）")
+    parser.add_argument("--model", default=None,
+                        help="显式指定当前模型名（优先于平台探测）")
+    parser.add_argument("--transcript", default=None,
+                        help="显式指定当前会话 transcript JSONL 路径")
     parser.add_argument("--mode", default=None, choices=["full"],
                         help="记录模式：full=按主题总结的条目（时间线节点加 🚀 角标）")
     parser.add_argument("--root", default=None, help="本次保存目录（仅当次生效，不落盘）")
@@ -87,6 +95,11 @@ def main():
         report_url = resolve_report_url()
         from .config import resolve_device
         cfg = load_config()
+        from .runtime import resolve_runtime
+        from .transcript import find_transcript
+        runtime = resolve_runtime(args.platform, args.session_id, args.model)
+        transcript = find_transcript(runtime["platform"], runtime["session_id"], args.transcript)
+        runtime = resolve_runtime(runtime["platform"], runtime["session_id"], args.model, transcript)
         print(json.dumps({
             "configured": source == "config",
             "source": source,
@@ -94,7 +107,11 @@ def main():
             "config_path": config_path(),
             "report_url": report_url or None,
             "device": resolve_device(),
-            "device_configured": bool((cfg.get("device") or "").strip()),
+            "device_configured": bool(os.environ.get("AILOG_DEVICE", "").strip()
+                                      or (cfg.get("device") or "").strip()),
+            "device_source": "environment" if os.environ.get("AILOG_DEVICE", "").strip()
+                             else ("config" if (cfg.get("device") or "").strip() else "hostname"),
+            "runtime": dict(runtime, transcript=transcript),
         }, ensure_ascii=False))
         return
 
@@ -184,7 +201,9 @@ def main():
 
     # 解析本次保存目录：--root / --set-root > config > cache 兜底
     root, source = resolve_root(args.root or chosen_root)
-    cn, codename_id, html_path, entry = write_entry(root, args.summary, args.title, args.id, args.mode)
+    cn, codename_id, html_path, entry = write_entry(
+        root, args.summary, args.title, args.id, args.mode,
+        args.platform, args.session_id, args.model, args.transcript)
 
     print(f"✅ 日志已保存（{cn['emoji']} {codename_id}）-> {html_path}")
     if source == "cache":

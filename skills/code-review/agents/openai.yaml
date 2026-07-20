@@ -1,0 +1,4 @@
+interface:
+  display_name: "提交前代码审查"
+  short_description: "围绕本次 diff 检查边界、日志、注释与提交质量"
+  default_prompt: "使用 $code-review 审查当前准备提交的改动。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "代码注释规范"
+  short_description: "编写作用域准确、不过时且不臆测业务的代码注释"
+  default_prompt: "使用 $code-comment 检查并改进本次代码注释。"
