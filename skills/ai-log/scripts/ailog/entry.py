@@ -9,12 +9,13 @@ import subprocess
 from datetime import datetime
 
 from . import render
+from .runtime import resolve_runtime
 from .session import session_codename
 from .store import (
     DATE_FMT, TIME_FMT, load_day, last_end_of_session,
     find_prev_day_with_session, days_between, secs_between, _prev_entry_datetime,
 )
-from .transcript import usage_since
+from .transcript import find_transcript, usage_since
 
 
 def git_branch(cwd):
@@ -29,14 +30,23 @@ def git_branch(cwd):
         return ""
 
 
-def write_entry(root, summary, title, id_override, mode=None):
+def write_entry(root, summary, title, id_override, mode=None, platform=None,
+                session_id=None, model=None, transcript_path=None):
     """把一条日志写入 <root>/{date}/ 下的 data.json，并刷新 index.html。
 
     返回 (会话代号字典, 会话 id, index.html 路径)，供调用方回显。
     跨午夜接续：本会话当天无记录、但更早日期里有，则起点继承昨日结束时间、
     时长按真实跨日计算，并写入 carryover 元信息供 UI 标注「前一部分在上一日」。
     """
-    cn = session_codename(os.environ.get("CLAUDE_CODE_SESSION_ID"))
+    detected_platform = platform
+    detected_session = session_id
+    # 先定位 transcript，供 Codex 从最新 turn_context 读取实际模型名。
+    provisional = resolve_runtime(detected_platform, detected_session, model)
+    located_transcript = find_transcript(
+        provisional["platform"], provisional["session_id"], transcript_path)
+    runtime = resolve_runtime(
+        provisional["platform"], provisional["session_id"], model, located_transcript)
+    cn = session_codename(runtime["session_id"])
     if id_override:
         cn = {"emoji": "🔖", "name": id_override, "suffix": "0000"}
     codename_id = f"{cn['name']}-{cn['suffix']}"
@@ -81,7 +91,8 @@ def write_entry(root, summary, title, id_override, mode=None):
         "cwd": cwd,
         "project": os.path.basename(cwd.rstrip("/")) or cwd,
         "branch": git_branch(cwd),
-        "model": os.environ.get("ANTHROPIC_MODEL", ""),
+        "platform": runtime["platform"],
+        "model": runtime["model"],
         "summary": summary.strip(),
     }
     if carryover:
@@ -91,7 +102,8 @@ def write_entry(root, summary, title, id_override, mode=None):
 
     # 分段 token / 轮数：统计「本会话上一条记录之后」到现在的 transcript 增量
     prev_dt = _prev_entry_datetime(day["entries"], codename_id, root, date_str)
-    stats = usage_since(os.environ.get("CLAUDE_CODE_SESSION_ID"), prev_dt, now)
+    stats = usage_since(runtime["platform"], runtime["session_id"], prev_dt, now,
+                        located_transcript)
     if stats:
         entry["usage"] = stats  # input/output/cache_read/cache_write/turns/api_calls
 

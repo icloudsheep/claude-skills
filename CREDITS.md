@@ -1,6 +1,6 @@
 # 参考者与致谢 / Credits
 
-claude-skills 仓库在开发、运行、宣传过程中参考或依赖的工具、库、平台与资源，按引用编号列出（含 AI 协作者）。前段为开发与运行依赖，后段为宣传制作所用工具与素材。
+claude-skills 仓库在开发、运行、宣传过程中参考或依赖的工具、库、平台与资源，按引用编号列出（含 AI 协作者）。本仓库同时面向 Claude Code 与 Codex。
 
 [1] Anthropic, Claude（本仓库的 AI 开发助手，经 Kiro 环境驱动）, https://www.anthropic.com/claude, AI
 [2] icloudsheep, 仓库作者与维护者, https://github.com/icloudsheep, AUTHOR
@@ -21,3 +21,4 @@ claude-skills 仓库在开发、运行、宣传过程中参考或依赖的工具
 [17] 零代码工具箱, 零代码工具箱, https://www.lingdaima.com, TOOL
 [18] 知乎, 知乎, https://www.zhihu.com/, TOOL
 [19] 站酷, 站酷免费商用字体, https://www.zcool.com.cn/special/zcoolfonts/, FONT
+[20] OpenAI, Codex（本仓库支持的 AI 编程代理与开发协作者）, https://developers.openai.com/codex/, AI

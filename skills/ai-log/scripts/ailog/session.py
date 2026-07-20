@@ -1,6 +1,6 @@
 """会话代号确定性派生。
 
-由 CLAUDE_CODE_SESSION_ID 的 SHA1 哈希取模选动物 + 取后缀，
+由平台会话 ID 的 SHA1 哈希取模选动物 + 取后缀，
 保证「同会话恒得同代号、不同会话彼此独立」。
 """
 import hashlib

@@ -2,6 +2,7 @@
 
 模块划分（高内聚低耦合，扁平结构）：
     config      —— 配置文件与保存目录（root）解析
+    runtime     —— Claude Code / Codex 平台、会话与模型探测
     session     —— 会话代号确定性派生
     store       —— data.json 读写、时间线计算、跨午夜接续、日期目录遍历
     transcript  —— 会话 transcript 解析与 token/轮数统计

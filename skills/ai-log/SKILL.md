@@ -9,6 +9,8 @@ metadata:
 
 把「上次记录日志到现在」的工作内容总结后追加写入本地日志文件。
 
+当会话 ID、模型、transcript、用量或设备名的探测结果异常时，读取 [references/platform-runtime.md](references/platform-runtime.md)；正常记录无需加载该文件。
+
 > 命令入口为 `scripts/ai_logger.py`（薄入口，委托给同目录 `scripts/ailog/` 包：
 > config / session / store / transcript / render / entry / cli 各司其职）。
 > 可视化模板 `scripts/template.html` 是**构建产物**——源码在 `scripts/src/`（CSS/JS/HTML 部件），
@@ -41,7 +43,7 @@ python3 <SKILL_DIR>/scripts/ai_logger.py --status
 输出形如 `{"configured": true/false, "source": "...", "root": "...", "config_path": "..."}`。
 
 - `configured: true` → 已永久指定，**跳过询问**，直接进入第 1 步。
-- `configured: false` → 尚未永久指定。**用 AskUserQuestion 询问用户**是否要永久指定一个保存位置：
+- `configured: false` → 尚未永久指定。**使用当前平台可用的用户询问机制**询问是否要永久指定一个保存位置：
   - 用户给出目录 → 本次用 `--set-root <目录>` 一次性「永久指定并立即记录」（见第 2 步）。
   - 用户暂不指定 → 本次落到临时兜底目录 `~/.cache/ai-log`，**不写配置**，下次仍会再次询问。
 
@@ -98,9 +100,9 @@ python3 <SKILL_DIR>/scripts/ai_logger.py --set-root "/your/chosen/dir" --title "
 > - **切勿**写成 `--summary "第一行\n- 列表项"`：双引号里的 `\n` 是字面反斜杠+n 而非换行，整段会被压成一个 `<p>`，块级 markdown 全部失效；内容中的 `$VAR`、`` `cmd` `` 还会被 Bash 展开/执行，导致内容被篡改甚至命令报错、日志写不进去。
 > - 内容长度不受限（脚本对 `--summary` 无字数上限），写多行富文本时务必用上面的 heredoc 方式。
 
-会话代号无需自己生成：脚本读环境变量 `CLAUDE_CODE_SESSION_ID` 哈希派生「emoji + 动物名 + 后缀」（如 `🦊 Fox-3f2a`），**同一会话恒定、不同会话独立**。时间戳也由脚本算：本次开始时间 = **本会话**上一条的结束时间（无则等于结束时间，因此不同会话区间可重叠），结束时间 = 当前时间。
+会话代号无需自己生成。脚本按以下顺序确定原始会话 ID：`--session-id` → `AILOG_SESSION_ID` → Codex 的 `CODEX_THREAD_ID` / Claude Code 的 `CLAUDE_CODE_SESSION_ID`。随后用 SHA1 确定性派生「emoji + 动物名 + 后缀」（如 `🦊 Fox-3f2a`），保证**同一会话恒定、不同会话几乎不重复**。若平台未暴露 ID，则使用固定的 `Anon-0000`，此时应建议调用者显式传入 `--session-id`，不能生成随机 ID 冒充稳定会话。时间戳由脚本计算：本次开始时间 = 本会话上一条的结束时间（无则等于结束时间），结束时间 = 当前时间。
 
-**token / 轮数自动记录**：脚本据 `CLAUDE_CODE_SESSION_ID` 定位会话 transcript（`~/.claude/projects/*/<id>.jsonl`），统计「本会话上一条记录之后到现在」这一**分段**的 input/output/cache tokens、对话轮数与 API 调用次数，写入条目的 `usage` 字段。无需传参；transcript 不可用时该字段缺失、UI 自动省略。
+**平台、模型与 token / 轮数自动记录**：平台解析顺序为 `--platform` → `AILOG_PLATFORM` → 平台会话变量 → `generic`。模型解析顺序为 `--model` → `AILOG_MODEL` → Claude Code 的 `ANTHROPIC_MODEL` / Codex 当前 rollout 最新 `turn_context.model` → 空值。transcript 可用 `--transcript` 或 `AILOG_TRANSCRIPT` 显式指定；否则 Claude Code 在 `${CLAUDE_CONFIG_DIR:-~/.claude}/projects` 查找，Codex 在 `${CODEX_HOME:-~/.codex}/sessions` 查找。脚本统计本会话上一条日志之后的分段用量；内部格式变化或文件不可读时省略 `usage`，绝不估算或伪造。
 
 ### 第 3 步：确认输出
 
@@ -155,7 +157,7 @@ python3 <SKILL_DIR>/scripts/ai_logger.py --report --title "标题" --summary "$S
 2. 配置文件 `~/.config/ai-log/config.json` 的 `device` 字段
 3. 兜底主机名（`socket.gethostname()` 的首段）
 
-**首次在线提交前必须确认设备名（强制）**：当用户首次要 `--report`、且 `config.json` 中**尚无 `device` 字段**时，**先用 AskUserQuestion 询问用户本机的设备名**（给出主机名作为默认建议），然后用 `--set-device <名称>` 写入配置：
+**首次在线提交前必须确认设备名（强制）**：设备名是供人识别和筛选的标签，不是硬件唯一标识。解析顺序为 `AILOG_DEVICE` → `config.json.device` → 短主机名建议值。当用户首次要 `--report` 且环境变量和配置中都没有设备名时，必须使用当前平台可用的用户询问机制确认；可以展示短主机名作为建议，但不能未经确认直接持久化或上报。随后用 `--set-device <名称>` 写入配置：
 
 ```bash
 # 首次确认设备名（写入 config.json）
@@ -174,14 +176,14 @@ python3 <SKILL_DIR>/scripts/ai_logger.py --set-device "我的 MacBook"
 
 ### 第 0 步：先获用户许可 + 选颗粒度与数据来源（强制）
 
-full 模式要遍历大量对话内容，**比普通记录显著更耗 token**。执行前**必须**用 AskUserQuestion 向用户说明并征得同意，且让用户选择**颗粒度**与**数据来源**两项：
+full 模式要遍历大量对话内容，**比普通记录显著更耗 token**。执行前**必须**使用当前平台可用的用户询问机制说明并征得同意，且让用户选择**颗粒度**与**数据来源**两项：
 
 **颗粒度（按什么划分一条日志）**：
 - **按对话主题（粗，推荐）**：把若干连贯的任务/问题归为一个主题，一条日志。通常 2~8 条，信息密度高、token 适中。
 - **按每轮对话（细）**：用户每一轮提问（及其后的助手处理）各记一条。条数 = 真实提问轮数，可能很多条，token 消耗随轮数线性上升——轮数多时务必提醒用户。
 
 **数据来源**：
-- **读 transcript（更全、更耗 token）**：读取本会话 `~/.claude/projects/*/<CLAUDE_CODE_SESSION_ID>.jsonl` 的用户/助手消息，能覆盖已被上下文压缩、滚出窗口的早期对话；代价是要读完整 transcript，token 消耗最大。
+- **读 transcript（更全、更耗 token）**：读取当前平台定位到的会话 JSONL，能覆盖已被上下文压缩、滚出窗口的早期对话；代价是要读完整 transcript，token 消耗最大。读取前先通过 `--status` 的 `runtime.transcript` 确认路径；不可用时回退当前上下文并明确说明。
 - **凭当前上下文（更省）**：仅凭当前对话上下文记忆划分；省 token，但被压缩/超窗的早期对话可能遗漏。
 
 用户未明确同意前，不得开跑。

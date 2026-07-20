@@ -77,9 +77,9 @@ def resolve_report_url(cli_report_url=None):
 
 
 # ── 设备名（device）──
-# 优先级：环境变量 AILOG_DEVICE > config.json 的 device > 主机名兜底。
+# 优先级：环境变量 AILOG_DEVICE > config.json 的 device > 短主机名建议值。
 def resolve_device():
-    """解析上报设备名。env > config > 主机名。"""
+    """解析人类可读的设备标签。主机名只是建议值，不是稳定硬件标识。"""
     env = os.environ.get("AILOG_DEVICE", "").strip()
     if env:
         return env
@@ -89,4 +89,3 @@ def resolve_device():
         return v
     import socket
     return (socket.gethostname() or "unknown").split(".")[0]
-
