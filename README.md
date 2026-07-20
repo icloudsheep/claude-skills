@@ -2,7 +2,7 @@
 
 ![claude-skills banner](static/banner.svg)
 
-一组可直接复用的 [Claude Code](https://docs.claude.com/en/docs/claude-code) / Agent Skills，沉淀日常开发中的工程规范与自动化能力。每个 skill 都是一个自包含目录，含 `SKILL.md`（带 YAML frontmatter）及其依赖资源，按需自动触发，不常驻占用上下文。
+一组可同时用于 [Claude Code](https://docs.claude.com/en/docs/claude-code) 与 [Codex](https://developers.openai.com/codex/) 的 Agent Skills，沉淀日常开发中的工程规范与自动化能力。同一份 skill 源码服务两个平台；每个 skill 都是自包含目录，含 `SKILL.md`（带 YAML frontmatter）及其依赖资源。
 
 ## 包含的 Skills
 
@@ -76,22 +76,26 @@ skills/
 ```
 
 > 每个 skill 目录均含 `SKILL.md`（规范正文，带 YAML frontmatter，运行时加载）与 `README.md`（仓库浏览用的人读说明）。
+> `agents/openai.yaml` 提供 Codex 的 UI 名称与默认提示；Claude Code 不读取它，不影响同一份 skill 的行为。
 > `ai-log` 的 `template.html` 是构建产物——改前端样式 / 逻辑请改 `scripts/src/` 下对应部件，再运行 `scripts/build/build_template.py` 重新拼装。
 
 ## 安装
 
 ![安装示意](static/install.svg)
 
-将 skill 目录放到 Claude Code 能发现的位置即可：
+将 skill 目录放到目标平台能发现的位置即可：
 
-- 用户级（全局生效）：`~/.claude/skills/`
-- 项目级（随仓库共享）：`<repo>/.claude/skills/`
+- Claude Code 用户级：`~/.claude/skills/`
+- Codex 用户级：`${CODEX_HOME:-~/.codex}/skills/`
+- 项目级：分别使用 `<repo>/.claude/skills/` 或 `<repo>/.codex/skills/`
 
 一键安装到用户级目录：
 
 ```bash
-./install.sh            # 等价于 ./install.sh ~/.claude/skills
-./install.sh <目标目录>  # 安装到指定目录
+./install.sh                       # 同时安装 Claude Code 与 Codex
+./install.sh --platform claude     # 仅 Claude Code
+./install.sh --platform codex      # 仅 Codex
+./install.sh --target <目标目录>    # 安装到自定义目录
 ```
 
 或手动软链 / 拷贝：
@@ -101,6 +105,10 @@ ln -s "$PWD/skills/code-comment" ~/.claude/skills/code-comment
 ln -s "$PWD/skills/code-review"  ~/.claude/skills/code-review
 ln -s "$PWD/skills/git-commit"   ~/.claude/skills/git-commit
 ln -s "$PWD/skills/ai-log"       ~/.claude/skills/ai-log
+ln -s "$PWD/skills/code-comment" "${CODEX_HOME:-$HOME/.codex}/skills/code-comment"
+ln -s "$PWD/skills/code-review"  "${CODEX_HOME:-$HOME/.codex}/skills/code-review"
+ln -s "$PWD/skills/git-commit"   "${CODEX_HOME:-$HOME/.codex}/skills/git-commit"
+ln -s "$PWD/skills/ai-log"       "${CODEX_HOME:-$HOME/.codex}/skills/ai-log"
 ```
 
 ### ai-log 的保存目录
@@ -113,11 +121,15 @@ ln -s "$PWD/skills/ai-log"       ~/.claude/skills/ai-log
 2. `~/.config/ai-log/config.json` 的 `root`：永久位置（由 `--set-root` 写入）。
 3. 兜底 `~/.cache/ai-log`：临时位置。
 
-首次使用时 skill 会查询状态（`--status`），若未永久指定则询问用户是否要永久指定一个目录；用户选定后写入配置文件（不污染 SKILL.md），之后不再打扰。脚本会读取环境变量：
+首次使用时 skill 会查询状态（`--status`），若未永久指定则询问用户是否要永久指定一个目录；用户选定后写入配置文件（不污染 SKILL.md）。关键运行时解析规则如下：
 
-- `CLAUDE_CODE_SESSION_ID`：派生稳定的会话代号（同会话恒定）。
-- `ANTHROPIC_MODEL`：记录当前模型名（可选）。
+- 会话 ID：`--session-id > AILOG_SESSION_ID > CODEX_THREAD_ID / CLAUDE_CODE_SESSION_ID`。
+- 模型：`--model > AILOG_MODEL > 平台环境或当前 transcript`；无法可靠确定时留空。
+- transcript：`--transcript > AILOG_TRANSCRIPT > 平台默认会话目录`；不可用时省略用量统计。
+- 平台：`--platform > AILOG_PLATFORM > 平台会话变量 > generic`。
 - `AILOG_REPORT_URL` / `AILOG_DEVICE`：在线上报到 [Ailogy](https://github.com/icloudsheep/Ailogy) 时的目标地址与本机设备名（也可由 `--set-report-url` / `--set-device` 写入 config.json）。
+
+设备名是人类可读标签，不是硬件唯一 ID。短主机名仅作为首次确认时的建议值；未确认前不应直接在线上报。
 
 ### 在线上报到 Ailogy（可选）
 

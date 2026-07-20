@@ -107,11 +107,13 @@ ItemAliasBO.naturalKey 之前包含 aliasLanguage 字段，但：
 
 - **关联需求 / 缺陷**：如 `Refs: #1234`、`Closes: #5678`，或贴需求管理系统链接。
 - **破坏性变更**：以 `BREAKING CHANGE:` 开头，单独成段说明不兼容点与迁移方式。
-- **AI 协作署名**：使用 Claude Code 等工具协助提交时，保留自动追加的署名行：
+- **AI 协作署名**：仅在用户或仓库要求署名时，使用本次实际工作的模型全称；从当前运行时上下文读取，不要猜测、缩写或固定为某个平台：
 
   ```
-  Co-Authored-By: Claude <noreply@anthropic.com>
+  Co-Authored-By: <当前模型全称> <noreply@对应模型提供商域名>
   ```
+
+  例如当前模型确为 `GPT-5.6 Sol` 时可写 `Co-Authored-By: GPT-5.6 Sol <noreply@openai.com>`。当前模型或提供商无法可靠确定时，先询问用户；不得沿用示例值。用户未要求、仓库无约定时不主动添加署名。
 
 ---
 
@@ -189,7 +191,7 @@ item-search 服务（ItemDoc）：
 说明：站外合作链路 expandSearch 暂不写入（归属无数据来源、语义存疑），
 为已知的有意取舍，非遗漏。
 
-Co-Authored-By: Claude <noreply@anthropic.com>
+Co-Authored-By: <当前模型全称> <noreply@对应模型提供商域名>
 ```
 
 > 注：commit message 正文可以适度描述链路与取舍（这是"为什么"的一部分）；
