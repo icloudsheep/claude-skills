@@ -2,7 +2,7 @@
 
 ![claude-skills banner](static/banner.svg)
 
-一组可同时用于 [Claude Code](https://docs.claude.com/en/docs/claude-code) 与 [Codex](https://developers.openai.com/codex/) 的 Agent Skills，沉淀日常开发中的工程规范与自动化能力。同一份 skill 源码服务两个平台；每个 skill 都是自包含目录，含 `SKILL.md`（带 YAML frontmatter）及其依赖资源。
+一组可同时用于 [Claude Code](https://docs.claude.com/en/docs/claude-code) 与 [Codex](https://developers.openai.com/codex/) 的 Agent Skills，沉淀日常开发中的工程规范与自动化能力。同一份 skill 源码服务两个平台；每个 skill 都是自包含目录，含 `SKILL.md`（带 YAML frontmatter）、Codex UI metadata 及其依赖资源。
 
 ## 包含的 Skills
 
@@ -16,6 +16,13 @@
 ## 新功能
 
 ![ai-log 功能展示](static/ai-log-showcase.svg)
+
+### 双平台适配
+
+- **一份源码，两端加载**：Claude Code 读取 `SKILL.md`，Codex 读取同一份 `SKILL.md`，并额外使用 `agents/openai.yaml` 展示 UI 名称、短描述与默认提示。
+- **安装脚本双目标**：`./install.sh` 默认同时软链到 `~/.claude/skills` 与 `${CODEX_HOME:-~/.codex}/skills`，也可用 `--platform` 或 `--target` 精确安装。
+- **运行时泛化**：`ai-log` 不再写死 Claude Code；平台、会话 ID、模型、transcript 与设备名均按统一优先级解析，详见 [skills/ai-log/references/platform-runtime.md](skills/ai-log/references/platform-runtime.md)。
+- **示例地址脱敏**：文档中的 Ailogy 上报地址使用 `https://ailogy.example.com` 或本地 `http://127.0.0.1:8000`。真实私有地址只应写入本机配置或环境变量，不提交进仓库。
 
 `ai-log` 近期增强（详见 [skills/ai-log](skills/ai-log)）：
 
@@ -53,24 +60,34 @@ code-comment ──被调用──► code-review ──衔接──► git-comm
 ```
 skills/
 ├── ai-log/
+│   ├── agents/
+│   │   └── openai.yaml           # Codex UI metadata（名称、短描述、默认提示）
 │   ├── SKILL.md
 │   ├── README.md
+│   ├── references/
+│   │   └── platform-runtime.md   # 平台 / 会话 / 模型 / transcript / 设备名解析细则
 │   ├── version.js                # 版本信息（git 受控真源；日志目录软链指向它）
 │   └── scripts/
 │       ├── ai_logger.py          # 命令入口（薄封装，委托 ailog 包）
-│       ├── ailog/                # 日志逻辑包：config/session/store/transcript/render/entry/cli
+│       ├── ailog/                # 日志逻辑包：runtime/config/session/store/transcript/render/entry/cli
 │       ├── template.html         # 可视化时间线模板（构建产物，由 src/ 拼装）
 │       ├── src/                  # 模板源码部件：css/* + js/* + shell_*.html
 │       ├── build/                # 构建脚本：build_template.py（拼装）/ check_template.py（校验）
 │       ├── mermaid.min.js        # 本地 mermaid 渲染库（离线可用）
 │       └── katex/                # 本地 KaTeX 公式库（katex.min.js/css + woff2 字体，离线可用）
 ├── code-comment/
+│   ├── agents/
+│   │   └── openai.yaml
 │   ├── SKILL.md
 │   └── README.md
 ├── code-review/
+│   ├── agents/
+│   │   └── openai.yaml
 │   ├── SKILL.md
 │   └── README.md
 └── git-commit/
+    ├── agents/
+    │   └── openai.yaml
     ├── SKILL.md
     └── README.md
 ```
@@ -136,12 +153,30 @@ ln -s "$PWD/skills/ai-log"       "${CODEX_HOME:-$HOME/.codex}/skills/ai-log"
 `ai-log` 默认纯本地。若想把多台设备的日志汇聚到一处并用网页瀑布流浏览，可部署 [Ailogy](https://github.com/icloudsheep/Ailogy) 服务，并在 CLI 侧配置上报地址与设备名：
 
 ```bash
-ai_logger.py --set-report-url http://127.0.0.1:8000   # 上报地址（只需根地址）
-ai_logger.py --set-device "我的 MacBook"               # 设备名（多设备区分来源）
-ai_logger.py --report --title "..." --summary "..."   # 记一条并上报（本地仍照写）
+ai_logger.py --set-report-url https://ailogy.example.com  # 上报地址（只需根地址）
+ai_logger.py --set-device "我的 MacBook"                  # 设备名（多设备区分来源）
+ai_logger.py --report --title "..." --summary "..."      # 记一条并上报（本地仍照写）
 ```
 
 上报是尽力而为，失败不阻断本地写入。详见 [skills/ai-log](skills/ai-log) 与 Ailogy 仓库。
+
+## 校验
+
+修改 skill 或脚本后，建议至少跑以下检查：
+
+```bash
+ruby -e 'require "yaml"; Dir["skills/*/SKILL.md"].each { |f| YAML.safe_load(File.read(f).match(/\A---\n(.*?)\n---\n/m)[1]); puts f }; Dir["skills/*/agents/openai.yaml"].each { |f| YAML.load_file(f); puts f }'
+bash -n install.sh
+python3 -m unittest tests/test_ai_log_runtime.py
+python3 -m compileall skills/ai-log/scripts/ailog
+git diff --check
+```
+
+若本机装有 PyYAML，也可运行 Codex skill 模板自带校验：
+
+```bash
+python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/*
+```
 
 ## 许可证
 

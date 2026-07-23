@@ -1,4 +1,4 @@
 interface:
   display_name: "AI 工作日志"
-  short_description: "总结本段工作并生成本地可视化时间线日志"
+  short_description: "总结本段工作并生成可视化时间线，支持本地与在线上报"
   default_prompt: "使用 $ai-log 总结并记录从上一条日志至今的工作。"
